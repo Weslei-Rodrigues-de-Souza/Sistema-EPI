@@ -18,15 +18,20 @@
         .dataTables_wrapper .dataTables_filter {
             margin-bottom: 1em;
         }
-        /* Para Select2 múltiplo dentro de modal */
         .select2-container--bootstrap .select2-selection--multiple {
             min-height: calc(1.5em + .75rem + 2px);
-            padding: .2rem .75rem; /* Ajustar padding para multiple */
+            padding: .2rem .75rem;
             line-height: 1.5;
             border-radius: .25rem;
         }
         .select2-container--bootstrap .select2-selection--multiple .select2-search__field {
-            width: 100% !important; /* Garante que o campo de pesquisa ocupe espaço */
+            width: 100% !important;
+        }
+        /* Estilo para o spinner de carregamento */
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: .2em;
         }
     </style>
     {% block head_extra %}{% endblock %}
@@ -48,6 +53,9 @@
                 <li class="nav-item {% if request.endpoint.startswith('listar_epis') %}active{% endif %}">
                     <a class="nav-link" href="{{ url_for('listar_epis') }}">EPIs</a>
                 </li>
+                <li class="nav-item {% if request.endpoint.startswith('listar_fornecedores') %}active{% endif %}">
+                    <a class="nav-link" href="{{ url_for('listar_fornecedores') }}">Fornecedores</a>
+                </li>
                 <li class="nav-item dropdown {% if request.endpoint.startswith('listar_departamentos') or request.endpoint.startswith('listar_funcoes') %}active{% endif %}">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownCadastrosAux" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Cadastros Auxiliares
@@ -55,7 +63,7 @@
                     <div class="dropdown-menu" aria-labelledby="navbarDropdownCadastrosAux">
                         <a class="dropdown-item {% if request.endpoint.startswith('listar_departamentos') %}active{% endif %}" href="{{ url_for('listar_departamentos') }}">Departamentos</a>
                         <a class="dropdown-item {% if request.endpoint.startswith('listar_funcoes') %}active{% endif %}" href="{{ url_for('listar_funcoes') }}">Funções</a>
-                        </div>
+                    </div>
                 </li>
             </ul>
         </div>
@@ -144,19 +152,18 @@
         }
 
         $(document).ready(function() {
-            $('.select2-basic').select2({ // Inicialização global para campos com esta classe
+            $('.select2-basic').select2({
                 theme: 'bootstrap',
                 placeholder: "Selecione uma opção",
                 allowClear: true,
                 language: "pt-BR"
             });
-             // Para Select2 múltiplo, se necessário em outros lugares:
             $('.select2-multiple').select2({
                 theme: 'bootstrap',
                 placeholder: "Selecione uma ou mais opções",
                 allowClear: true,
                 language: "pt-BR",
-                closeOnSelect: false // Mantém aberto para múltiplas seleções
+                closeOnSelect: false
             });
         });
     </script>

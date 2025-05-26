@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Fornecedores{% endblock %}
+
+{% block head_extra %}
+<style>
+    #btnConsultarCnpj .spinner-border-sm {
+        display: none; /* Esconder spinner inicialmente */
+    }
+    #modalFornecedor .modal-body {
+        max-height: 75vh; 
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Fornecedores Cadastrados</h2>
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalFornecedor" id="btnNovoFornecedor">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+        </svg>
+        Novo Fornecedor
+    </button>
+</div>
+
+<form method="GET" action="{{ url_for('listar_fornecedores') }}" class="mb-3 form-inline">
+    <div class="input-group flex-grow-1">
+        <input type="text" class="form-control" name="search" placeholder="Buscar por CNPJ, Razão Social, Nome Fantasia..." value="{{ search_query or '' }}">
+        <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+                Buscar
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('listar_fornecedores') }}" class="btn btn-outline-danger">Limpar</a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+{% if fornecedores_lista %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover" id="tabelaFornecedores">
+        <thead>
+            <tr>
+                <th>CNPJ</th>
+                <th class="text-left-override">Razão Social</th>
+                <th class="text-left-override">Nome Fantasia</th>
+                <th class="text-left-override">Município/UF</th>
+                <th>Telefone</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for forn in fornecedores_lista %}
+            <tr>
+                <td>{{ forn.cnpj | format_cnpj }}</td> {# Filtro aplicado aqui #}
+                <td class="text-left-override">{{ forn.razao_social }}</td>
+                <td class="text-left-override">{{ forn.nome_fantasia or 'N/A' }}</td>
+                <td class="text-left-override">{{ forn.municipio or 'N/A' }}{% if forn.uf %}/{{ forn.uf }}{% endif %}</td>
+                <td>{{ forn.telefone or 'N/A' }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-fornecedor" title="Editar"
+                                data-toggle="modal" data-target="#modalFornecedor" data-id="{{ forn.id }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                            </svg>
+                        </button>
+                        <form action="{{ url_for('excluir_fornecedor', fornecedor_id=forn.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este fornecedor?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5Zm-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5ZM4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Zm6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528ZM8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5Z"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <div class="alert alert-info mt-3" role="alert">
+    {% if search_query %}
+        Nenhum fornecedor encontrado para a busca: "{{ search_query }}".
+    {% else %}
+        Nenhum fornecedor cadastrado.
+    {% endif %}
+    </div>
+{% endif %}
+
+<div class="modal fade" id="modalFornecedor" tabindex="-1" aria-labelledby="modalFornecedorLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="formFornecedor" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalFornecedorLabel">Dados do Fornecedor</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="fornecedor_id_hidden_field" name="fornecedor_id_hidden_field">
+
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="cnpj_fornecedor">CNPJ*</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="cnpj_fornecedor" name="cnpj_fornecedor" required placeholder="00.000.000/0000-00" maxlength="18">
+                        <div class="input-group-append">
+                            <button class="btn btn-info" type="button" id="btnConsultarCnpj">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Consultar API
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group col-md-8">
+                    <label for="razao_social_fornecedor">Razão Social*</label>
+                    <input type="text" class="form-control" id="razao_social_fornecedor" name="razao_social_fornecedor" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="nome_fantasia_fornecedor">Nome Fantasia</label>
+                <input type="text" class="form-control" id="nome_fantasia_fornecedor" name="nome_fantasia_fornecedor">
+            </div>
+            
+            <hr>
+            <h6>Endereço</h6>
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="logradouro_fornecedor">Logradouro</label>
+                    <input type="text" class="form-control" id="logradouro_fornecedor" name="logradouro_fornecedor">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="numero_fornecedor">Número</label>
+                    <input type="text" class="form-control" id="numero_fornecedor" name="numero_fornecedor">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="complemento_fornecedor">Complemento</label>
+                    <input type="text" class="form-control" id="complemento_fornecedor" name="complemento_fornecedor">
+                </div>
+                 <div class="form-group col-md-6">
+                    <label for="bairro_fornecedor">Bairro</label>
+                    <input type="text" class="form-control" id="bairro_fornecedor" name="bairro_fornecedor">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="cep_fornecedor">CEP</label>
+                    <input type="text" class="form-control" id="cep_fornecedor" name="cep_fornecedor" placeholder="00000-000" maxlength="9">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="municipio_fornecedor">Município</label>
+                    <input type="text" class="form-control" id="municipio_fornecedor" name="municipio_fornecedor">
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="uf_fornecedor">UF</label>
+                    <input type="text" class="form-control" id="uf_fornecedor" name="uf_fornecedor" maxlength="2">
+                </div>
+            </div>
+            <hr>
+            <h6>Contato</h6>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="telefone_fornecedor">Telefone</label>
+                    <input type="text" class="form-control" id="telefone_fornecedor" name="telefone_fornecedor">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="email_fornecedor">E-mail</label>
+                    <input type="email" class="form-control" id="email_fornecedor" name="email_fornecedor">
+                </div>
+            </div>
+             <div class="form-group">
+                <label for="observacoes_fornecedor">Observações</label>
+                <textarea class="form-control" id="observacoes_fornecedor" name="observacoes_fornecedor" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Fornecedor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+$(document).ready(function() {
+    var tabelaFornecedores = $('#tabelaFornecedores').DataTable({
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json" },
+        "pageLength": 10,
+        "responsive": true,
+        "columnDefs": [ { "orderable": false, "targets": -1 } ],
+        "order": [[1, 'asc']]
+    });
+
+    // Função para aplicar máscara de CNPJ
+    function aplicarMascaraCnpj(cnpjInput) {
+        var valor = cnpjInput.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+        valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
+        valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+        cnpjInput.value = valor;
+    }
+    // Função para aplicar máscara de CEP
+     function aplicarMascaraCep(cepInput) {
+        var valor = cepInput.value.replace(/\D/g, '');
+        if (valor.length > 5) {
+            valor = valor.replace(/^(\d{5})(\d)/, '$1-$2');
+        }
+        cepInput.value = valor;
+    }
+
+    // Aplica a máscara ao digitar no campo CNPJ do modal
+    $('#cnpj_fornecedor').on('input', function() {
+        aplicarMascaraCnpj(this);
+    });
+    // Aplica a máscara ao digitar no campo CEP do modal
+    $('#cep_fornecedor').on('input', function() {
+        aplicarMascaraCep(this);
+    });
+
+
+    function limparCamposEnderecoContato(clearCnpj = false) {
+        if (clearCnpj) {
+            $('#cnpj_fornecedor').val('');
+        }
+        // Não limpar Razão Social e Nome Fantasia automaticamente ao consultar API
+        // Apenas se a API retornar vazio para eles
+        $('#logradouro_fornecedor').val('');
+        $('#numero_fornecedor').val('');
+        $('#complemento_fornecedor').val('');
+        $('#bairro_fornecedor').val('');
+        $('#cep_fornecedor').val('');
+        $('#municipio_fornecedor').val('');
+        $('#uf_fornecedor').val('');
+        $('#telefone_fornecedor').val('');
+        $('#email_fornecedor').val('');
+    }
+
+    $('#btnNovoFornecedor').on('click', function() {
+        $('#modalFornecedorLabel').text('Novo Fornecedor');
+        $('#formFornecedor').attr('action', "{{ url_for('salvar_fornecedor') }}");
+        $('#formFornecedor').trigger('reset'); 
+        $('#fornecedor_id_hidden_field').val(''); 
+        $('#cnpj_fornecedor').prop('readonly', false);
+        $('#btnConsultarCnpj').prop('disabled', false);
+    });
+
+    $('#tabelaFornecedores tbody').on('click', '.btn-editar-fornecedor', function() {
+        var fornecedorId = $(this).data('id');
+        $('#modalFornecedorLabel').text('Editar Fornecedor');
+        $('#formFornecedor').attr('action', "{{ url_for('salvar_fornecedor', fornecedor_id=0) }}".replace('0', fornecedorId));
+        $('#formFornecedor').trigger('reset');
+        $('#fornecedor_id_hidden_field').val(fornecedorId);
+        
+        $('#cnpj_fornecedor').prop('readonly', true);
+        $('#btnConsultarCnpj').prop('disabled', true);
+
+        $.getJSON("{{ url_for('get_fornecedor_json', fornecedor_id=0) }}".replace('0', fornecedorId), function(data) {
+            if(data.error) {
+                showToast("Erro", data.error, false);
+                return;
+            }
+            // Aplicar máscara ao CNPJ carregado para edição
+            var cnpjInputTemp = document.createElement('input');
+            cnpjInputTemp.value = data.cnpj || '';
+            aplicarMascaraCnpj(cnpjInputTemp);
+            $('#cnpj_fornecedor').val(cnpjInputTemp.value);
+            
+            $('#razao_social_fornecedor').val(data.razao_social);
+            $('#nome_fantasia_fornecedor').val(data.nome_fantasia);
+            $('#logradouro_fornecedor').val(data.logradouro);
+            $('#numero_fornecedor').val(data.numero);
+            $('#complemento_fornecedor').val(data.complemento);
+            $('#bairro_fornecedor').val(data.bairro);
+            
+            var cepInputTemp = document.createElement('input');
+            cepInputTemp.value = data.cep || '';
+            aplicarMascaraCep(cepInputTemp);
+            $('#cep_fornecedor').val(cepInputTemp.value);
+
+            $('#municipio_fornecedor').val(data.municipio);
+            $('#uf_fornecedor').val(data.uf);
+            $('#telefone_fornecedor').val(data.telefone);
+            $('#email_fornecedor').val(data.email);
+            $('#observacoes_fornecedor').val(data.observacoes);
+        }).fail(function() {
+            showToast("Erro de Rede", "Não foi possível carregar os dados do fornecedor.", false);
+        });
+    });
+
+    $('#btnConsultarCnpj').on('click', function() {
+        var cnpjInput = $('#cnpj_fornecedor');
+        var cnpj = cnpjInput.val().replace(/\D/g, ''); // Remove não dígitos para enviar à API
+        var btn = $(this);
+        var spinner = btn.find('.spinner-border-sm');
+
+        if (cnpj.length !== 14) {
+            showToast("Atenção", "Por favor, insira um CNPJ válido com 14 dígitos.", false);
+            return;
+        }
+
+        // Limpar campos antes da nova consulta, exceto CNPJ e Razão Social/Nome Fantasia
+        limparCamposEnderecoContato(false); 
+        spinner.show();
+        btn.prop('disabled', true);
+
+        $.getJSON("{{ url_for('consultar_cnpj_api', cnpj='0') }}".replace('0', cnpj), function(response) {
+            if (response.error) {
+                showToast("Erro na Consulta", response.error, false);
+                 if (response.error.includes("não encontrado")) { 
+                    $('#razao_social_fornecedor').focus();
+                }
+            } else if (response.data) {
+                var data = response.data;
+                $('#razao_social_fornecedor').val(data.razao_social || '');
+                $('#nome_fantasia_fornecedor').val(data.nome_fantasia || '');
+                $('#logradouro_fornecedor').val(data.logradouro || '');
+                $('#numero_fornecedor').val(data.numero || '');
+                $('#complemento_fornecedor').val(data.complemento || '');
+                $('#bairro_fornecedor').val(data.bairro || '');
+                
+                var cepInputTemp = document.createElement('input');
+                cepInputTemp.value = data.cep || '';
+                aplicarMascaraCep(cepInputTemp);
+                $('#cep_fornecedor').val(cepInputTemp.value);
+
+                $('#municipio_fornecedor').val(data.municipio || '');
+                $('#uf_fornecedor').val(data.uf || '');
+                $('#telefone_fornecedor').val(data.telefone || ''); 
+                $('#email_fornecedor').val(data.email || '');
+                
+                if(response.exists_in_db){
+                    showToast("Aviso", "CNPJ já cadastrado. Dados carregados do banco.", false);
+                } else {
+                     showToast("Sucesso", "Dados do CNPJ consultados na API.", true);
+                }
+            }
+        }).fail(function(jqXHR) {
+            var errorMsg = "Erro de comunicação ao consultar CNPJ.";
+            if(jqXHR.responseJSON && jqXHR.responseJSON.error){
+                errorMsg = jqXHR.responseJSON.error;
+            }
+            showToast("Erro na Consulta", errorMsg, false);
+        }).always(function() {
+            spinner.hide();
+            btn.prop('disabled', false);
+        });
+    });
+    
+    $('#modalFornecedor').on('hidden.bs.modal', function () {
+        if (!$('#fornecedor_id_hidden_field').val()) { 
+            $('#formFornecedor').trigger('reset');
+            $('#cnpj_fornecedor').prop('readonly', false); 
+            $('#btnConsultarCnpj').prop('disabled', false); 
+        }
+    });
+
+});
+</script>
+{% endblock %}

@@ -95,6 +95,22 @@ class DatabaseManager:
                 periodicidade_unidade TEXT CHECK(periodicidade_unidade IN ('dias', 'semanas', 'meses', 'anos')),
                 meses_troca TEXT, -- Armazenará um JSON array string, ex: "[1, 7]" para Janeiro e Julho
                 observacoes TEXT
+            )""",
+            """CREATE TABLE IF NOT EXISTS fornecedores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cnpj TEXT UNIQUE NOT NULL,
+                razao_social TEXT,
+                nome_fantasia TEXT,
+                logradouro TEXT,
+                numero TEXT,
+                complemento TEXT,
+                bairro TEXT,
+                cep TEXT,
+                municipio TEXT,
+                uf TEXT,
+                telefone TEXT, -- Pode ser mais de um, considerar como armazenar
+                email TEXT,
+                observacoes TEXT
             )"""
         ]
         print(f"A inicializar base de dados em: {self.db_path}")
@@ -219,12 +235,11 @@ class DatabaseManager:
         like_term = f"%{search_term}%"
         return self.execute_query(query, (like_term, like_term, like_term, like_term), fetch_all=True)
 
-    # --- EPIS ---
+    # --- EPIS (sem alterações) ---
     def add_epi(self, data):
         query = """INSERT INTO epis 
                    (nome, marca, ca, periodicidade_valor, periodicidade_unidade, meses_troca, observacoes)
                    VALUES (?, ?, ?, ?, ?, ?, ?)"""
-        # meses_troca é esperado como uma string JSON ou None
         meses_troca_json = json.dumps(data.get('meses_troca')) if data.get('meses_troca') else None
         params = (
             data.get('nome'), data.get('marca'), data.get('ca'),
@@ -239,16 +254,13 @@ class DatabaseManager:
         query = "SELECT * FROM epis ORDER BY nome"
         epis_data = self.execute_query(query, fetch_all=True)
         if epis_data:
-            # Converter a string JSON de meses_troca de volta para lista para o template
             return [{**epi, 'meses_troca': json.loads(epi['meses_troca']) if epi['meses_troca'] else []} for epi in epis_data]
         return []
-
 
     def get_epi_by_id(self, epi_id):
         query = "SELECT * FROM epis WHERE id = ?"
         epi = self.execute_query(query, (epi_id,), fetch_one=True)
         if epi:
-            # Converter a string JSON de meses_troca de volta para lista
             epi_dict = dict(epi)
             epi_dict['meses_troca'] = json.loads(epi['meses_troca']) if epi['meses_troca'] else []
             return epi_dict
@@ -272,7 +284,6 @@ class DatabaseManager:
         return self.execute_query(query, params, commit=True)
 
     def delete_epi(self, epi_id):
-        # Adicionar verificações se o EPI está em uso antes de excluir, se necessário no futuro
         query = "DELETE FROM epis WHERE id = ?"
         return self.execute_query(query, (epi_id,), commit=True)
 
@@ -287,4 +298,58 @@ class DatabaseManager:
         if epis_data:
             return [{**epi, 'meses_troca': json.loads(epi['meses_troca']) if epi['meses_troca'] else []} for epi in epis_data]
         return []
+
+    # --- FORNECEDORES ---
+    def add_fornecedor(self, data):
+        query = """INSERT INTO fornecedores
+                   (cnpj, razao_social, nome_fantasia, logradouro, numero, complemento, bairro, cep, municipio, uf, telefone, email, observacoes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        params = (
+            data.get('cnpj'), data.get('razao_social'), data.get('nome_fantasia'),
+            data.get('logradouro'), data.get('numero'), data.get('complemento'),
+            data.get('bairro'), data.get('cep'), data.get('municipio'), data.get('uf'),
+            data.get('telefone'), data.get('email'), data.get('observacoes')
+        )
+        return self.execute_query(query, params, commit=True)
+
+    def get_all_fornecedores(self):
+        query = "SELECT * FROM fornecedores ORDER BY razao_social"
+        return self.execute_query(query, fetch_all=True)
+
+    def get_fornecedor_by_id(self, fornecedor_id):
+        query = "SELECT * FROM fornecedores WHERE id = ?"
+        return self.execute_query(query, (fornecedor_id,), fetch_one=True)
+    
+    def get_fornecedor_by_cnpj(self, cnpj):
+        query = "SELECT * FROM fornecedores WHERE cnpj = ?"
+        return self.execute_query(query, (cnpj,), fetch_one=True)
+
+    def update_fornecedor(self, fornecedor_id, data):
+        query = """UPDATE fornecedores SET
+                   cnpj = ?, razao_social = ?, nome_fantasia = ?, 
+                   logradouro = ?, numero = ?, complemento = ?, bairro = ?, cep = ?, 
+                   municipio = ?, uf = ?, telefone = ?, email = ?, observacoes = ?
+                   WHERE id = ?"""
+        params = (
+            data.get('cnpj'), data.get('razao_social'), data.get('nome_fantasia'),
+            data.get('logradouro'), data.get('numero'), data.get('complemento'),
+            data.get('bairro'), data.get('cep'), data.get('municipio'), data.get('uf'),
+            data.get('telefone'), data.get('email'), data.get('observacoes'),
+            fornecedor_id
+        )
+        return self.execute_query(query, params, commit=True)
+
+    def delete_fornecedor(self, fornecedor_id):
+        # Adicionar verificações se o fornecedor está em uso antes de excluir, se necessário no futuro
+        query = "DELETE FROM fornecedores WHERE id = ?"
+        return self.execute_query(query, (fornecedor_id,), commit=True)
+
+    def search_fornecedores(self, search_term):
+        query = """
+            SELECT * FROM fornecedores
+            WHERE cnpj LIKE ? OR razao_social LIKE ? OR nome_fantasia LIKE ? OR municipio LIKE ? OR uf LIKE ?
+            ORDER BY razao_social
+        """
+        like_term = f"%{search_term}%"
+        return self.execute_query(query, (like_term, like_term, like_term, like_term, like_term), fetch_all=True)
 

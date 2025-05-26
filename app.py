@@ -1,7 +1,9 @@
 import os
 import datetime
 import sqlite3
-import json # Para lidar com a lista de meses_troca no request
+import json
+import re # Importado para limpar o CNPJ
+import requests
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from database import DatabaseManager
 
@@ -42,7 +44,18 @@ def format_date_for_db(date_str_display):
             return str(date_str_display)
         return None
 
+def format_cnpj_for_display(cnpj_str):
+    if not cnpj_str:
+        return ""
+    # Remove todos os caracteres não numéricos
+    cnpj_limpo = re.sub(r'\D', '', str(cnpj_str))
+    if len(cnpj_limpo) == 14:
+        return f"{cnpj_limpo[:2]}.{cnpj_limpo[2:5]}.{cnpj_limpo[5:8]}/{cnpj_limpo[8:12]}-{cnpj_limpo[12:]}"
+    return cnpj_str # Retorna o original se não tiver 14 dígitos
+
 app.jinja_env.filters['format_date_display'] = format_date_for_display
+app.jinja_env.filters['format_cnpj'] = format_cnpj_for_display
+
 
 # --- Rotas Principais ---
 @app.route('/')
@@ -50,14 +63,16 @@ def dashboard():
     total_funcionarios = len(db.get_all_funcionarios() or [])
     total_departamentos = len(db.get_all_departamentos() or [])
     total_funcoes = len(db.get_all_funcoes() or [])
-    total_epis = len(db.get_all_epis() or []) # Adicionado
+    total_epis = len(db.get_all_epis() or [])
+    total_fornecedores = len(db.get_all_fornecedores() or [])
     return render_template('dashboard.html',
                            total_funcionarios=total_funcionarios,
                            total_departamentos=total_departamentos,
                            total_funcoes=total_funcoes,
-                           total_epis=total_epis) # Passado para o template
+                           total_epis=total_epis,
+                           total_fornecedores=total_fornecedores)
 
-# --- Rotas para Departamentos (sem alterações nesta etapa) ---
+# --- Rotas para Departamentos (sem alterações) ---
 @app.route('/departamentos')
 def listar_departamentos():
     departamentos = db.get_all_departamentos()
@@ -66,46 +81,35 @@ def listar_departamentos():
 @app.route('/departamentos/json/<int:dep_id>')
 def get_departamento_json(dep_id):
     departamento = db.get_departamento_by_id(dep_id)
-    if departamento:
-        return jsonify(dict(departamento))
+    if departamento: return jsonify(dict(departamento))
     return jsonify({"error": "Departamento não encontrado"}), 404
 
 @app.route('/departamentos/salvar', methods=['POST'])
 @app.route('/departamentos/salvar/<int:dep_id>', methods=['POST'])
 def salvar_departamento(dep_id=None):
     nome = request.form.get('nome_departamento')
-    if not nome:
-        flash('O nome do departamento é obrigatório.', 'danger')
-        return redirect(url_for('listar_departamentos'))
-    try:
-        if dep_id:
-            if db.update_departamento(dep_id, nome):
-                flash('Departamento atualizado com sucesso!', 'success')
+    if not nome: flash('O nome do departamento é obrigatório.', 'danger')
+    else:
+        try:
+            if dep_id:
+                if db.update_departamento(dep_id, nome): flash('Departamento atualizado!', 'success')
+                else: flash('Erro ao atualizar departamento.', 'danger')
             else:
-                flash('Erro ao atualizar departamento.', 'danger')
-        else:
-            if db.add_departamento(nome):
-                flash('Departamento adicionado com sucesso!', 'success')
-            else:
-                flash('Erro ao adicionar departamento. Verifique se já existe.', 'danger')
-    except sqlite3.IntegrityError:
-        flash(f"Erro: O departamento '{nome}' já existe ou ocorreu um conflito.", 'danger')
-    except Exception as e:
-        flash(f'Erro ao salvar departamento: {str(e)}', 'danger')
+                if db.add_departamento(nome): flash('Departamento adicionado!', 'success')
+                else: flash('Erro ao adicionar. Verifique se já existe.', 'danger')
+        except sqlite3.IntegrityError: flash(f"Erro: O departamento '{nome}' já existe.", 'danger')
+        except Exception as e: flash(f'Erro: {str(e)}', 'danger')
     return redirect(url_for('listar_departamentos'))
 
 @app.route('/departamentos/excluir/<int:dep_id>', methods=['POST'])
 def excluir_departamento(dep_id):
-    resultado = db.delete_departamento(dep_id)
-    if resultado == "EM_USO":
-        flash('Não é possível excluir o departamento, pois ele está associado a funcionários.', 'warning')
-    elif resultado:
-        flash('Departamento excluído com sucesso!', 'success')
-    else:
-        flash('Erro ao excluir departamento.', 'danger')
+    res = db.delete_departamento(dep_id)
+    if res == "EM_USO": flash('Departamento em uso, não pode ser excluído.', 'warning')
+    elif res: flash('Departamento excluído!', 'success')
+    else: flash('Erro ao excluir departamento.', 'danger')
     return redirect(url_for('listar_departamentos'))
 
-# --- Rotas para Funções (sem alterações nesta etapa) ---
+# --- Rotas para Funções (sem alterações) ---
 @app.route('/funcoes')
 def listar_funcoes():
     funcoes = db.get_all_funcoes()
@@ -114,208 +118,247 @@ def listar_funcoes():
 @app.route('/funcoes/json/<int:func_id>')
 def get_funcao_json(func_id):
     funcao = db.get_funcao_by_id(func_id)
-    if funcao:
-        return jsonify(dict(funcao))
+    if funcao: return jsonify(dict(funcao))
     return jsonify({"error": "Função não encontrada"}), 404
 
 @app.route('/funcoes/salvar', methods=['POST'])
 @app.route('/funcoes/salvar/<int:func_id>', methods=['POST'])
 def salvar_funcao(func_id=None):
     nome = request.form.get('nome_funcao')
-    if not nome:
-        flash('O nome da função é obrigatório.', 'danger')
-        return redirect(url_for('listar_funcoes'))
-    try:
-        if func_id:
-            if db.update_funcao(func_id, nome):
-                flash('Função atualizada com sucesso!', 'success')
+    if not nome: flash('O nome da função é obrigatório.', 'danger')
+    else:
+        try:
+            if func_id:
+                if db.update_funcao(func_id, nome): flash('Função atualizada!', 'success')
+                else: flash('Erro ao atualizar função.', 'danger')
             else:
-                flash('Erro ao atualizar função.', 'danger')
-        else:
-            if db.add_funcao(nome):
-                flash('Função adicionada com sucesso!', 'success')
-            else:
-                flash('Erro ao adicionar função. Verifique se já existe.', 'danger')
-    except sqlite3.IntegrityError:
-        flash(f"Erro: A função '{nome}' já existe ou ocorreu um conflito.", 'danger')
-    except Exception as e:
-        flash(f'Erro ao salvar função: {str(e)}', 'danger')
+                if db.add_funcao(nome): flash('Função adicionada!', 'success')
+                else: flash('Erro ao adicionar. Verifique se já existe.', 'danger')
+        except sqlite3.IntegrityError: flash(f"Erro: A função '{nome}' já existe.", 'danger')
+        except Exception as e: flash(f'Erro: {str(e)}', 'danger')
     return redirect(url_for('listar_funcoes'))
 
 @app.route('/funcoes/excluir/<int:func_id>', methods=['POST'])
 def excluir_funcao(func_id):
-    resultado = db.delete_funcao(func_id)
-    if resultado == "EM_USO":
-        flash('Não é possível excluir a função, pois ela está associada a funcionários.', 'warning')
-    elif resultado:
-        flash('Função excluída com sucesso!', 'success')
-    else:
-        flash('Erro ao excluir função.', 'danger')
+    res = db.delete_funcao(func_id)
+    if res == "EM_USO": flash('Função em uso, não pode ser excluída.', 'warning')
+    elif res: flash('Função excluída!', 'success')
+    else: flash('Erro ao excluir função.', 'danger')
     return redirect(url_for('listar_funcoes'))
 
-# --- Rotas para Funcionários (sem alterações nesta etapa) ---
+# --- Rotas para Funcionários (sem alterações) ---
 @app.route('/funcionarios')
 def listar_funcionarios():
-    search_query = request.args.get('search', '')
-    if search_query:
-        funcionarios = db.search_funcionarios(search_query)
-    else:
-        funcionarios = db.get_all_funcionarios()
-    departamentos = db.get_all_departamentos()
-    funcoes = db.get_all_funcoes()
-    setores = ['Produtivo', 'Administrativo', 'Outro']
+    search = request.args.get('search', '')
+    funcionarios = db.search_funcionarios(search) if search else db.get_all_funcionarios()
     return render_template('funcionarios.html',
                            funcionarios=funcionarios or [],
-                           search_query=search_query,
-                           departamentos=departamentos or [],
-                           funcoes=funcoes or [],
-                           setores=setores)
+                           search_query=search,
+                           departamentos=db.get_all_departamentos() or [],
+                           funcoes=db.get_all_funcoes() or [],
+                           setores=['Produtivo', 'Administrativo', 'Outro'])
 
 @app.route('/funcionarios/json/<int:func_id>')
 def get_funcionario_json(func_id):
-    funcionario = db.get_funcionario_by_id(func_id)
-    if funcionario:
-        func_dict = dict(funcionario)
-        func_dict['data_admissao'] = func_dict['data_admissao']
-        func_dict['data_treinamento'] = func_dict['data_treinamento']
-        return jsonify(func_dict)
+    f = db.get_funcionario_by_id(func_id)
+    if f: return jsonify(dict(f))
     return jsonify({"error": "Funcionário não encontrado"}), 404
 
 @app.route('/funcionarios/salvar', methods=['POST'])
 @app.route('/funcionarios/salvar/<int:func_id>', methods=['POST'])
 def salvar_funcionario(func_id=None):
-    dados_funcionario = {
-        'nome_completo': request.form.get('nome_completo'),
-        'cpf': request.form.get('cpf'),
-        'rg': request.form.get('rg'),
-        'ctps': request.form.get('ctps'),
-        'serie': request.form.get('serie'),
-        'pis': request.form.get('pis'),
-        'departamento_id': request.form.get('departamento_id_modal') if request.form.get('departamento_id_modal') else None, # Corrigido para pegar do modal
-        'funcao_id': request.form.get('funcao_id_modal') if request.form.get('funcao_id_modal') else None, # Corrigido
-        'setor': request.form.get('setor_modal'), # Corrigido
+    data = {
+        'nome_completo': request.form.get('nome_completo'), 'cpf': request.form.get('cpf'),
+        'rg': request.form.get('rg'), 'ctps': request.form.get('ctps'), 'serie': request.form.get('serie'),
+        'pis': request.form.get('pis'), 'departamento_id': request.form.get('departamento_id_modal'),
+        'funcao_id': request.form.get('funcao_id_modal'), 'setor': request.form.get('setor_modal'),
         'data_admissao': format_date_for_db(request.form.get('data_admissao')),
         'data_treinamento': format_date_for_db(request.form.get('data_treinamento'))
     }
-    if not dados_funcionario['nome_completo']:
-        flash('O nome completo do funcionário é obrigatório.', 'danger')
+    if not data['nome_completo']: flash('Nome completo é obrigatório.', 'danger')
     else:
         try:
             if func_id:
-                if db.update_funcionario(func_id, dados_funcionario):
-                    flash('Funcionário atualizado com sucesso!', 'success')
-                else:
-                    flash('Erro ao atualizar funcionário.', 'danger')
+                if db.update_funcionario(func_id, data): flash('Funcionário atualizado!', 'success')
+                else: flash('Erro ao atualizar funcionário.', 'danger')
             else:
-                if db.add_funcionario(dados_funcionario):
-                    flash('Funcionário adicionado com sucesso!', 'success')
-                else:
-                    flash('Erro ao adicionar funcionário.', 'danger')
-        except sqlite3.IntegrityError:
-             flash('Erro: CPF já cadastrado ou outro conflito de dados únicos.', 'danger')
-        except Exception as e:
-            flash(f'Erro ao salvar funcionário: {str(e)}', 'danger')
+                if db.add_funcionario(data): flash('Funcionário adicionado!', 'success')
+                else: flash('Erro ao adicionar funcionário.', 'danger')
+        except sqlite3.IntegrityError: flash('Erro: CPF duplicado ou conflito de dados.', 'danger')
+        except Exception as e: flash(f'Erro: {str(e)}', 'danger')
     return redirect(url_for('listar_funcionarios'))
 
 @app.route('/funcionarios/excluir/<int:func_id>', methods=['POST'])
 def excluir_funcionario(func_id):
-    if db.delete_funcionario(func_id):
-        flash('Funcionário excluído com sucesso!', 'success')
-    else:
-        flash('Erro ao excluir funcionário.', 'danger')
+    if db.delete_funcionario(func_id): flash('Funcionário excluído!', 'success')
+    else: flash('Erro ao excluir funcionário.', 'danger')
     return redirect(url_for('listar_funcionarios'))
 
-# --- Rotas para EPIs ---
+# --- Rotas para EPIs (sem alterações) ---
 @app.route('/epis')
 def listar_epis():
-    search_query = request.args.get('search', '')
-    if search_query:
-        epis_lista = db.search_epis(search_query)
-    else:
-        epis_lista = db.get_all_epis()
-    
-    # Para o formulário no modal
-    unidades_periodicidade = ['dias', 'semanas', 'meses', 'anos']
-    meses_do_ano = [
-        {"valor": "1", "nome": "Janeiro"}, {"valor": "2", "nome": "Fevereiro"},
-        {"valor": "3", "nome": "Março"}, {"valor": "4", "nome": "Abril"},
-        {"valor": "5", "nome": "Maio"}, {"valor": "6", "nome": "Junho"},
-        {"valor": "7", "nome": "Julho"}, {"valor": "8", "nome": "Agosto"},
-        {"valor": "9", "nome": "Setembro"}, {"valor": "10", "nome": "Outubro"},
-        {"valor": "11", "nome": "Novembro"}, {"valor": "12", "nome": "Dezembro"}
-    ]
-
+    search = request.args.get('search', '')
+    epis = db.search_epis(search) if search else db.get_all_epis()
     return render_template('epis.html',
-                           epis_lista=epis_lista or [],
-                           search_query=search_query,
-                           unidades_periodicidade=unidades_periodicidade,
-                           meses_do_ano=meses_do_ano)
+                           epis_lista=epis or [],
+                           search_query=search,
+                           unidades_periodicidade=['dias', 'semanas', 'meses', 'anos'],
+                           meses_do_ano=[{"valor": str(i), "nome": datetime.date(2000, i, 1).strftime('%B').capitalize()} for i in range(1, 13)])
 
 @app.route('/epis/json/<int:epi_id>')
 def get_epi_json(epi_id):
     epi = db.get_epi_by_id(epi_id)
-    if epi:
-        return jsonify(epi) # epi já é um dict com meses_troca como lista
+    if epi: return jsonify(epi)
     return jsonify({"error": "EPI não encontrado"}), 404
 
 @app.route('/epis/salvar', methods=['POST'])
 @app.route('/epis/salvar/<int:epi_id>', methods=['POST'])
 def salvar_epi(epi_id=None):
-    try:
-        periodicidade_valor_str = request.form.get('periodicidade_valor')
-        dados_epi = {
-            'nome': request.form.get('nome_epi'), # Nomes dos campos do modal de EPI
-            'marca': request.form.get('marca_epi'),
-            'ca': request.form.get('ca_epi'),
-            'periodicidade_valor': int(periodicidade_valor_str) if periodicidade_valor_str and periodicidade_valor_str.isdigit() else None,
-            'periodicidade_unidade': request.form.get('periodicidade_unidade_epi'),
-            'meses_troca': request.form.getlist('meses_troca_epi[]'), # Pega lista de meses do select múltiplo
-            'observacoes': request.form.get('observacoes_epi')
-        }
-    except Exception as e:
-        flash(f"Erro ao processar dados do formulário: {str(e)}", "danger")
-        return redirect(url_for('listar_epis'))
-
-
-    if not dados_epi['nome']:
-        flash('O nome do EPI é obrigatório.', 'danger')
+    val_str = request.form.get('periodicidade_valor')
+    data = {
+        'nome': request.form.get('nome_epi'), 'marca': request.form.get('marca_epi'),
+        'ca': request.form.get('ca_epi'), 'observacoes': request.form.get('observacoes_epi'),
+        'periodicidade_valor': int(val_str) if val_str and val_str.isdigit() else None,
+        'periodicidade_unidade': request.form.get('periodicidade_unidade_epi'),
+        'meses_troca': request.form.getlist('meses_troca_epi[]')
+    }
+    if not data['nome']: flash('Nome do EPI é obrigatório.', 'danger')
     else:
         try:
-            if epi_id: # Edição
-                if db.update_epi(epi_id, dados_epi):
-                    flash('EPI atualizado com sucesso!', 'success')
-                else:
-                    flash('Erro ao atualizar EPI.', 'danger')
-            else: # Novo
-                if db.add_epi(dados_epi):
-                    flash('EPI adicionado com sucesso!', 'success')
-                else:
-                    flash('Erro ao adicionar EPI.', 'danger')
-        except sqlite3.IntegrityError:
-             flash('Erro: Conflito de dados ao salvar o EPI (ex: CA duplicado, se for único).', 'danger')
-        except Exception as e:
-            flash(f'Erro ao salvar EPI: {str(e)}', 'danger')
+            if epi_id:
+                if db.update_epi(epi_id, data): flash('EPI atualizado!', 'success')
+                else: flash('Erro ao atualizar EPI.', 'danger')
+            else:
+                if db.add_epi(data): flash('EPI adicionado!', 'success')
+                else: flash('Erro ao adicionar EPI.', 'danger')
+        except sqlite3.IntegrityError: flash('Erro: Conflito de dados ao salvar EPI.', 'danger')
+        except Exception as e: flash(f'Erro: {str(e)}', 'danger')
     return redirect(url_for('listar_epis'))
 
 @app.route('/epis/excluir/<int:epi_id>', methods=['POST'])
 def excluir_epi(epi_id):
-    if db.delete_epi(epi_id):
-        flash('EPI excluído com sucesso!', 'success')
-    else:
-        flash('Erro ao excluir EPI.', 'danger')
+    if db.delete_epi(epi_id): flash('EPI excluído!', 'success')
+    else: flash('Erro ao excluir EPI.', 'danger')
     return redirect(url_for('listar_epis'))
+
+# --- Rotas para Fornecedores ---
+@app.route('/fornecedores')
+def listar_fornecedores():
+    search_query = request.args.get('search', '')
+    if search_query:
+        fornecedores_lista = db.search_fornecedores(search_query)
+    else:
+        fornecedores_lista = db.get_all_fornecedores()
+    return render_template('fornecedores.html',
+                           fornecedores_lista=fornecedores_lista or [],
+                           search_query=search_query)
+
+@app.route('/fornecedores/json/<int:fornecedor_id>')
+def get_fornecedor_json(fornecedor_id):
+    fornecedor = db.get_fornecedor_by_id(fornecedor_id)
+    if fornecedor:
+        # Formatar CNPJ para exibição no modal se necessário (já formatado na tabela)
+        forn_dict = dict(fornecedor)
+        # forn_dict['cnpj'] = format_cnpj_for_display(forn_dict['cnpj']) # Opcional, se quiser formatado no input também
+        return jsonify(forn_dict)
+    return jsonify({"error": "Fornecedor não encontrado"}), 404
+
+@app.route('/consultar_cnpj/<string:cnpj>')
+def consultar_cnpj_api(cnpj):
+    cnpj_limpo = re.sub(r'\D', '', cnpj) # Usar re.sub para limpar
+    if len(cnpj_limpo) != 14:
+        return jsonify({"error": "CNPJ inválido. Deve conter 14 dígitos."}), 400
+
+    fornecedor_existente = db.get_fornecedor_by_cnpj(cnpj_limpo)
+    if fornecedor_existente:
+        return jsonify({"data": dict(fornecedor_existente), "exists_in_db": True})
+
+    try:
+        response = requests.get(f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_limpo}", timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        dados_formatados = {
+            "cnpj": data.get("cnpj"), "razao_social": data.get("razao_social"),
+            "nome_fantasia": data.get("nome_fantasia"), "logradouro": data.get("logradouro"),
+            "numero": data.get("numero"), "complemento": data.get("complemento"),
+            "bairro": data.get("bairro"), "cep": data.get("cep"),
+            "municipio": data.get("municipio"), "uf": data.get("uf"),
+            "telefone": data.get("ddd_telefone_1") or data.get("ddd_telefone_2"),
+            "email": data.get("email"), "exists_in_db": False
+        }
+        return jsonify({"data": dados_formatados, "exists_in_db": False})
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Timeout ao consultar BrasilAPI."}), 504
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+             return jsonify({"error": f"CNPJ não encontrado na BrasilAPI."}), 404
+        return jsonify({"error": f"Erro na BrasilAPI: {e.response.status_code}."}), e.response.status_code
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Erro de conexão ao consultar BrasilAPI."}), 500
+    except Exception as e:
+        return jsonify({"error": f"Erro inesperado: {str(e)}"}), 500
+
+
+@app.route('/fornecedores/salvar', methods=['POST'])
+@app.route('/fornecedores/salvar/<int:fornecedor_id>', methods=['POST'])
+def salvar_fornecedor(fornecedor_id=None):
+    dados_fornecedor = {
+        'cnpj': re.sub(r'\D', '', request.form.get('cnpj_fornecedor') or ""),
+        'razao_social': request.form.get('razao_social_fornecedor'),
+        'nome_fantasia': request.form.get('nome_fantasia_fornecedor'),
+        'logradouro': request.form.get('logradouro_fornecedor'),
+        'numero': request.form.get('numero_fornecedor'),
+        'complemento': request.form.get('complemento_fornecedor'),
+        'bairro': request.form.get('bairro_fornecedor'),
+        'cep': re.sub(r'\D', '', request.form.get('cep_fornecedor') or ""), # Limpar CEP também
+        'municipio': request.form.get('municipio_fornecedor'),
+        'uf': request.form.get('uf_fornecedor'),
+        'telefone': request.form.get('telefone_fornecedor'),
+        'email': request.form.get('email_fornecedor'),
+        'observacoes': request.form.get('observacoes_fornecedor')
+    }
+
+    if not dados_fornecedor['cnpj'] or len(dados_fornecedor['cnpj']) != 14 :
+        flash('CNPJ é obrigatório e deve conter 14 dígitos.', 'danger')
+    elif not dados_fornecedor['razao_social']:
+        flash('Razão Social é obrigatória.', 'danger')
+    else:
+        try:
+            if fornecedor_id:
+                if db.update_fornecedor(fornecedor_id, dados_fornecedor):
+                    flash('Fornecedor atualizado com sucesso!', 'success')
+                else:
+                    flash('Erro ao atualizar fornecedor.', 'danger')
+            else:
+                existente = db.get_fornecedor_by_cnpj(dados_fornecedor['cnpj'])
+                if existente:
+                    flash(f"Erro: O CNPJ {format_cnpj_for_display(dados_fornecedor['cnpj'])} já está cadastrado para '{existente['razao_social']}'.", 'danger')
+                elif db.add_fornecedor(dados_fornecedor):
+                    flash('Fornecedor adicionado com sucesso!', 'success')
+                else:
+                    flash('Erro ao adicionar fornecedor.', 'danger')
+        except sqlite3.IntegrityError:
+             flash(f"Erro: O CNPJ '{format_cnpj_for_display(dados_fornecedor['cnpj'])}' já está cadastrado ou ocorreu um conflito de dados.", 'danger')
+        except Exception as e:
+            flash(f'Erro ao salvar fornecedor: {str(e)}', 'danger')
+    return redirect(url_for('listar_fornecedores'))
+
+@app.route('/fornecedores/excluir/<int:fornecedor_id>', methods=['POST'])
+def excluir_fornecedor(fornecedor_id):
+    if db.delete_fornecedor(fornecedor_id):
+        flash('Fornecedor excluído com sucesso!', 'success')
+    else:
+        flash('Erro ao excluir fornecedor.', 'danger')
+    return redirect(url_for('listar_fornecedores'))
 
 
 if __name__ == '__main__':
     static_dir = os.path.join(BASE_DIR, 'static')
-    if not os.path.exists(static_dir):
-        os.makedirs(static_dir)
+    if not os.path.exists(static_dir): os.makedirs(static_dir)
     templates_dir = os.path.join(BASE_DIR, 'templates')
-    if not os.path.exists(templates_dir):
-        os.makedirs(templates_dir)
+    if not os.path.exists(templates_dir): os.makedirs(templates_dir)
     css_file_path = os.path.join(static_dir, 'style.css')
     if not os.path.exists(css_file_path):
-        with open(css_file_path, 'w') as f:
-            f.write("/* Estilos CSS básicos aqui */\nbody { font-family: sans-serif; margin: 20px; }\n.flash-messages .alert { margin-top: 15px; }")
+        with open(css_file_path, 'w') as f: f.write("/* Estilos CSS */")
         print(f"Ficheiro '{css_file_path}' criado.")
     app.run(debug=True)

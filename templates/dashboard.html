@@ -19,7 +19,8 @@
     </div>
 
     <div class="row justify-content-center">
-        <div class="col-lg-3 col-md-6 mb-4"> <div class="card text-center card-stats shadow-sm h-100">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card text-center card-stats shadow-sm h-100">
                 <div class="card-body">
                     <div class="stat-number text-primary">{{ total_funcionarios if total_funcionarios is not none else '0' }}</div>
                     <div class="stat-label">Funcionários</div>
@@ -37,6 +38,17 @@
                 </div>
                 <div class="card-footer text-muted">
                     <a href="{{ url_for('listar_epis') }}" class="stretched-link">Gerir EPIs</a>
+                </div>
+            </div>
+        </div>
+         <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card text-center card-stats shadow-sm h-100">
+                <div class="card-body">
+                    <div class="stat-number text-warning">{{ total_fornecedores if total_fornecedores is not none else '0' }}</div>
+                    <div class="stat-label">Fornecedores</div>
+                </div>
+                <div class="card-footer text-muted">
+                    <a href="{{ url_for('listar_fornecedores') }}" class="stretched-link">Gerir Fornecedores</a>
                 </div>
             </div>
         </div>
@@ -62,6 +74,6 @@
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 </div>
 {% endblock %}
