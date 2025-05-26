@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import datetime
+import json # Para lidar com a lista de meses_troca
 
 class DatabaseManager:
     def __init__(self, db_file_path):
@@ -9,15 +10,15 @@ class DatabaseManager:
         if db_dir_path and not os.path.exists(db_dir_path):
             try:
                 os.makedirs(db_dir_path, exist_ok=True)
-                print(f"INFO: Diretório do banco de dados criado: {db_dir_path}")
+                print(f"INFO: Diretório da base de dados criado: {db_dir_path}")
             except OSError as e:
-                print(f"AVISO: Não foi possível criar o diretório do banco de dados {db_dir_path}. Erro: {e}")
+                print(f"AVISO: Não foi possível criar o diretório da base de dados {db_dir_path}. Erro: {e}")
         self.init_db()
 
     def _get_conn(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON;") # Habilita chaves estrangeiras
+        conn.execute("PRAGMA foreign_keys = ON;")
         return conn
 
     def execute_query(self, query, params=None, fetch_one=False, fetch_all=False, commit=False):
@@ -41,14 +42,14 @@ class DatabaseManager:
                 result_data = cursor.fetchall()
                 success = True
             
-            if not (commit or fetch_one or fetch_all): # Para DDL ou outras queries sem retorno/commit explícito
+            if not (commit or fetch_one or fetch_all):
                 if query.strip().upper().startswith(("CREATE", "ALTER", "DROP")):
-                    conn.commit() # DDL statements são implicitamente commitados em alguns DBs, mas explícito é melhor
+                    conn.commit()
                 success = True
 
         except sqlite3.Error as e:
             print(f"Erro BD SQLite: {e} | Query: {query} | Params: {params}")
-            conn.rollback() # Garante rollback em caso de erro
+            conn.rollback()
             success = False
         finally:
             conn.close()
@@ -84,15 +85,24 @@ class DatabaseManager:
                 data_treinamento TEXT,
                 FOREIGN KEY (departamento_id) REFERENCES departamentos (id) ON DELETE SET NULL,
                 FOREIGN KEY (funcao_id) REFERENCES funcoes (id) ON DELETE SET NULL
+            )""",
+            """CREATE TABLE IF NOT EXISTS epis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                marca TEXT,
+                ca TEXT,
+                periodicidade_valor INTEGER,
+                periodicidade_unidade TEXT CHECK(periodicidade_unidade IN ('dias', 'semanas', 'meses', 'anos')),
+                meses_troca TEXT, -- Armazenará um JSON array string, ex: "[1, 7]" para Janeiro e Julho
+                observacoes TEXT
             )"""
-            # Adicionar mais tabelas para as próximas etapas aqui
         ]
-        print(f"Inicializando banco de dados em: {self.db_path}")
+        print(f"A inicializar base de dados em: {self.db_path}")
         for query in queries:
             self.execute_query(query)
-        print("Banco de dados inicializado com sucesso.")
+        print("Base de dados inicializada com sucesso.")
 
-    # --- DEPARTAMENTOS ---
+    # --- DEPARTAMENTOS (sem alterações) ---
     def add_departamento(self, nome):
         query = "INSERT INTO departamentos (nome) VALUES (?)"
         return self.execute_query(query, (nome,), commit=True)
@@ -110,19 +120,17 @@ class DatabaseManager:
         return self.execute_query(query, (nome, dep_id), commit=True)
 
     def delete_departamento(self, dep_id):
-        # Antes de deletar, verificar se está em uso por algum funcionário
         funcionarios_com_dep = self.execute_query(
             "SELECT 1 FROM funcionarios WHERE departamento_id = ? LIMIT 1",
             (dep_id,),
             fetch_one=True
         )
         if funcionarios_com_dep:
-            return "EM_USO" # Sinaliza que não pode ser excluído
-        
+            return "EM_USO"
         query = "DELETE FROM departamentos WHERE id = ?"
         return self.execute_query(query, (dep_id,), commit=True)
 
-    # --- FUNCOES ---
+    # --- FUNCOES (sem alterações) ---
     def add_funcao(self, nome):
         query = "INSERT INTO funcoes (nome) VALUES (?)"
         return self.execute_query(query, (nome,), commit=True)
@@ -140,7 +148,6 @@ class DatabaseManager:
         return self.execute_query(query, (nome, func_id), commit=True)
 
     def delete_funcao(self, func_id):
-        # Antes de deletar, verificar se está em uso por algum funcionário
         funcionarios_com_funcao = self.execute_query(
             "SELECT 1 FROM funcionarios WHERE funcao_id = ? LIMIT 1",
             (func_id,),
@@ -148,11 +155,10 @@ class DatabaseManager:
         )
         if funcionarios_com_funcao:
             return "EM_USO"
-            
         query = "DELETE FROM funcoes WHERE id = ?"
         return self.execute_query(query, (func_id,), commit=True)
 
-    # --- FUNCIONARIOS ---
+    # --- FUNCIONARIOS (sem alterações) ---
     def add_funcionario(self, data):
         query = """INSERT INTO funcionarios 
                    (nome_completo, cpf, rg, ctps, serie, pis, departamento_id, funcao_id, setor, data_admissao, data_treinamento)
@@ -212,4 +218,73 @@ class DatabaseManager:
         """
         like_term = f"%{search_term}%"
         return self.execute_query(query, (like_term, like_term, like_term, like_term), fetch_all=True)
+
+    # --- EPIS ---
+    def add_epi(self, data):
+        query = """INSERT INTO epis 
+                   (nome, marca, ca, periodicidade_valor, periodicidade_unidade, meses_troca, observacoes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)"""
+        # meses_troca é esperado como uma string JSON ou None
+        meses_troca_json = json.dumps(data.get('meses_troca')) if data.get('meses_troca') else None
+        params = (
+            data.get('nome'), data.get('marca'), data.get('ca'),
+            data.get('periodicidade_valor') if data.get('periodicidade_valor') else None,
+            data.get('periodicidade_unidade') if data.get('periodicidade_unidade') else None,
+            meses_troca_json,
+            data.get('observacoes')
+        )
+        return self.execute_query(query, params, commit=True)
+
+    def get_all_epis(self):
+        query = "SELECT * FROM epis ORDER BY nome"
+        epis_data = self.execute_query(query, fetch_all=True)
+        if epis_data:
+            # Converter a string JSON de meses_troca de volta para lista para o template
+            return [{**epi, 'meses_troca': json.loads(epi['meses_troca']) if epi['meses_troca'] else []} for epi in epis_data]
+        return []
+
+
+    def get_epi_by_id(self, epi_id):
+        query = "SELECT * FROM epis WHERE id = ?"
+        epi = self.execute_query(query, (epi_id,), fetch_one=True)
+        if epi:
+            # Converter a string JSON de meses_troca de volta para lista
+            epi_dict = dict(epi)
+            epi_dict['meses_troca'] = json.loads(epi['meses_troca']) if epi['meses_troca'] else []
+            return epi_dict
+        return None
+
+    def update_epi(self, epi_id, data):
+        query = """UPDATE epis SET
+                   nome = ?, marca = ?, ca = ?, 
+                   periodicidade_valor = ?, periodicidade_unidade = ?,
+                   meses_troca = ?, observacoes = ?
+                   WHERE id = ?"""
+        meses_troca_json = json.dumps(data.get('meses_troca')) if data.get('meses_troca') else None
+        params = (
+            data.get('nome'), data.get('marca'), data.get('ca'),
+            data.get('periodicidade_valor') if data.get('periodicidade_valor') else None,
+            data.get('periodicidade_unidade') if data.get('periodicidade_unidade') else None,
+            meses_troca_json,
+            data.get('observacoes'),
+            epi_id
+        )
+        return self.execute_query(query, params, commit=True)
+
+    def delete_epi(self, epi_id):
+        # Adicionar verificações se o EPI está em uso antes de excluir, se necessário no futuro
+        query = "DELETE FROM epis WHERE id = ?"
+        return self.execute_query(query, (epi_id,), commit=True)
+
+    def search_epis(self, search_term):
+        query = """
+            SELECT * FROM epis
+            WHERE nome LIKE ? OR marca LIKE ? OR ca LIKE ? OR observacoes LIKE ?
+            ORDER BY nome
+        """
+        like_term = f"%{search_term}%"
+        epis_data = self.execute_query(query, (like_term, like_term, like_term, like_term), fetch_all=True)
+        if epis_data:
+            return [{**epi, 'meses_troca': json.loads(epi['meses_troca']) if epi['meses_troca'] else []} for epi in epis_data]
+        return []
 

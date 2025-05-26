@@ -150,8 +150,8 @@
                     <label for="funcao_id_modal">Função</label> {# ID alterado #}
                     <select class="form-control select2-basic" id="funcao_id_modal" name="funcao_id" data-placeholder="Selecione uma função...">
                         <option value=""></option>
-                        {% for func in funcoes %}
-                        <option value="{{ func.id }}">{{ func.nome }}</option>
+                        {% for func_select in funcoes %} {# Alterado nome da variável de loop para evitar conflito com a func da tabela #}
+                        <option value="{{ func_select.id }}">{{ func_select.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -199,13 +199,12 @@ $(document).ready(function() {
     });
 
     // Configuração do Select2 para os campos dentro do modal de funcionário
-    // É importante que o dropdownParent seja o modal para o Select2 funcionar corretamente sobre ele.
     function initFuncionarioModalSelect2() {
         $('#departamento_id_modal').select2({
             theme: 'bootstrap',
             placeholder: "Selecione um departamento...",
             allowClear: true,
-            dropdownParent: $('#modalFuncionario .modal-content'),
+            dropdownParent: $('#modalFuncionario .modal-content'), // Garante que o dropdown apareça sobre o modal
             language: "pt-BR"
         });
         $('#funcao_id_modal').select2({
@@ -224,7 +223,7 @@ $(document).ready(function() {
         });
     }
     
-    // Chamar a inicialização do Select2 quando o modal for mostrado
+    // Chamar a inicialização do Select2 quando o modal for completamente carregado e exibido
     $('#modalFuncionario').on('shown.bs.modal', function () {
         initFuncionarioModalSelect2();
     });
@@ -233,8 +232,8 @@ $(document).ready(function() {
     $('#btnNovoFuncionario').on('click', function() {
         $('#modalFuncionarioLabel').text('Novo Funcionário');
         $('#formFuncionario').attr('action', "{{ url_for('salvar_funcionario') }}");
-        $('#formFuncionario').trigger('reset'); // Limpa todos os campos do formulário
-        $('#funcionario_id_hidden_field').val(''); // Garante que o ID oculto está limpo
+        $('#formFuncionario').trigger('reset'); 
+        $('#funcionario_id_hidden_field').val(''); 
 
         // Resetar Select2 para placeholder
         $('#departamento_id_modal').val(null).trigger('change');
@@ -242,6 +241,7 @@ $(document).ready(function() {
         $('#setor_modal').val(null).trigger('change');
     });
 
+    // Usar delegação de eventos para botões de editar, pois a tabela é renderizada pelo DataTables
     $('#tabelaFuncionarios tbody').on('click', '.btn-editar-funcionario', function() {
         var funcId = $(this).data('id');
         $('#modalFuncionarioLabel').text('Editar Funcionário');
@@ -250,9 +250,9 @@ $(document).ready(function() {
         $('#funcionario_id_hidden_field').val(funcId);
 
         // Resetar Select2 para placeholder antes de popular
-        $('#departamento_id_modal').val(null).trigger('change');
-        $('#funcao_id_modal').val(null).trigger('change');
-        $('#setor_modal').val(null).trigger('change');
+        $('#departamento_id_modal').val(null).trigger('change.select2'); // Usar .trigger('change.select2') para Select2
+        $('#funcao_id_modal').val(null).trigger('change.select2');
+        $('#setor_modal').val(null).trigger('change.select2');
 
         $.getJSON("{{ url_for('get_funcionario_json', func_id=0) }}".replace('0', funcId), function(data) {
             if(data.error) {
@@ -265,30 +265,24 @@ $(document).ready(function() {
             $('#ctps').val(data.ctps);
             $('#serie').val(data.serie);
             $('#pis').val(data.pis);
-            $('#data_admissao').val(data.data_admissao); // Formato YYYY-MM-DD
-            $('#data_treinamento').val(data.data_treinamento); // Formato YYYY-MM-DD
+            $('#data_admissao').val(data.data_admissao); 
+            $('#data_treinamento').val(data.data_treinamento); 
 
             // Popular e selecionar Select2
             if(data.departamento_id) {
-                $('#departamento_id_modal').val(data.departamento_id.toString()).trigger('change');
+                $('#departamento_id_modal').val(data.departamento_id.toString()).trigger('change.select2');
             }
             if(data.funcao_id) {
-                $('#funcao_id_modal').val(data.funcao_id.toString()).trigger('change');
+                $('#funcao_id_modal').val(data.funcao_id.toString()).trigger('change.select2');
             }
             if(data.setor) {
-                $('#setor_modal').val(data.setor).trigger('change');
+                $('#setor_modal').val(data.setor).trigger('change.select2');
             }
-        }).fail(function() {
-            showToast("Erro", "Não foi possível carregar os dados do funcionário.", false);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            showToast("Erro de Rede", "Não foi possível carregar os dados do funcionário: " + textStatus, false);
+            console.error("Erro AJAX:", textStatus, errorThrown, jqXHR.responseText);
         });
     });
-
-    // Para garantir que o Select2 seja reinicializado se o DataTables redesenhar a tabela
-    // (pode ser necessário se a tabela for muito dinâmica, mas geralmente não para este caso de uso)
-    // tabelaFuncionarios.on('draw.dt', function () {
-    //     // Aqui você poderia reinicializar handlers de eventos para botões se necessário
-    // });
-
 });
 </script>
 {% endblock %}

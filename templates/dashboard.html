@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Controle de EPIs{% endblock %}
+{% block title %}Dashboard - Controlo de EPIs{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -12,42 +12,53 @@
 <div class="container mt-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="text-center">Dashboard - Controle de EPIs</h2>
+            <h2 class="text-center">Dashboard - Controlo de EPIs</h2>
             <p class="text-center text-muted">Visão geral do seu sistema.</p>
             <hr>
         </div>
     </div>
 
     <div class="row justify-content-center">
-        <div class="col-md-4"> <div class="card text-center card-stats shadow-sm">
+        <div class="col-lg-3 col-md-6 mb-4"> <div class="card text-center card-stats shadow-sm h-100">
                 <div class="card-body">
                     <div class="stat-number text-primary">{{ total_funcionarios if total_funcionarios is not none else '0' }}</div>
-                    <div class="stat-label">Funcionários Cadastrados</div>
+                    <div class="stat-label">Funcionários</div>
                 </div>
                 <div class="card-footer text-muted">
                     <a href="{{ url_for('listar_funcionarios') }}" class="stretched-link">Ver Todos</a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-center card-stats shadow-sm">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card text-center card-stats shadow-sm h-100">
+                <div class="card-body">
+                    <div class="stat-number text-info">{{ total_epis if total_epis is not none else '0' }}</div>
+                    <div class="stat-label">EPIs Cadastrados</div>
+                </div>
+                <div class="card-footer text-muted">
+                    <a href="{{ url_for('listar_epis') }}" class="stretched-link">Gerir EPIs</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card text-center card-stats shadow-sm h-100">
                 <div class="card-body">
                     <div class="stat-number text-success">{{ total_departamentos if total_departamentos is not none else '0' }}</div>
                     <div class="stat-label">Departamentos</div>
                 </div>
                  <div class="card-footer text-muted">
-                    <a href="{{ url_for('listar_departamentos') }}" class="stretched-link">Gerenciar</a>
+                    <a href="{{ url_for('listar_departamentos') }}" class="stretched-link">Gerir</a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-center card-stats shadow-sm">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card text-center card-stats shadow-sm h-100">
                 <div class="card-body">
-                    <div class="stat-number text-info">{{ total_funcoes if total_funcoes is not none else '0' }}</div>
+                    <div class="stat-number text-secondary">{{ total_funcoes if total_funcoes is not none else '0' }}</div>
                     <div class="stat-label">Funções</div>
                 </div>
                 <div class="card-footer text-muted">
-                     <a href="{{ url_for('listar_funcoes') }}" class="stretched-link">Gerenciar</a>
+                     <a href="{{ url_for('listar_funcoes') }}" class="stretched-link">Gerir</a>
                 </div>
             </div>
         </div>

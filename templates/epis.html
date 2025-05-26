@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}EPIs{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Estilos específicos para o select múltiplo de meses, se necessário */
+    #meses_troca_epi_modal.select2-container--bootstrap .select2-selection--multiple {
+        /* min-height: 100px; */ /* Exemplo de ajuste de altura se necessário */
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>EPIs Cadastrados</h2>
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalEPI" id="btnNovoEPI">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+        </svg>
+        Novo EPI
+    </button>
+</div>
+
+<form method="GET" action="{{ url_for('listar_epis') }}" class="mb-3 form-inline">
+    <div class="input-group flex-grow-1">
+        <input type="text" class="form-control" name="search" placeholder="Buscar por nome, marca, CA..." value="{{ search_query or '' }}">
+        <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+                Buscar
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('listar_epis') }}" class="btn btn-outline-danger">Limpar</a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+{% if epis_lista %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover" id="tabelaEPIs">
+        <thead>
+            <tr>
+                <th class="text-left-override">Nome</th>
+                <th class="text-left-override">Marca</th>
+                <th>CA</th>
+                <th>Periodicidade</th>
+                <th class="text-left-override">Meses Troca</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for epi in epis_lista %}
+            <tr>
+                <td class="text-left-override">{{ epi.nome }}</td>
+                <td class="text-left-override">{{ epi.marca or 'N/A' }}</td>
+                <td>{{ epi.ca or 'N/A' }}</td>
+                <td>
+                    {% if epi.periodicidade_valor and epi.periodicidade_unidade %}
+                        {{ epi.periodicidade_valor }} {{ epi.periodicidade_unidade }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td class="text-left-override">
+                    {% if epi.meses_troca %}
+                        {# Definição do mapeamento de número do mês para nome abreviado #}
+                        {% set nomes_meses_map = {
+                            1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
+                            7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"
+                        } %}
+                        {# Lista para armazenar os nomes dos meses selecionados #}
+                        {% set nomes_selecionados = [] %}
+                        {# Loop pelos números dos meses em epi.meses_troca #}
+                        {% for mes_num_str in epi.meses_troca %}
+                            {% set mes_num = mes_num_str|int %} {# Converte para inteiro #}
+                            {# Verifica se o número do mês existe no nosso mapeamento #}
+                            {% if mes_num in nomes_meses_map %}
+                                {# Adiciona o nome do mês à lista #}
+                                {% set _ = nomes_selecionados.append(nomes_meses_map[mes_num]) %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ nomes_selecionados|join(', ') }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-epi" title="Editar"
+                                data-toggle="modal" data-target="#modalEPI" data-id="{{ epi.id }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                            </svg>
+                        </button>
+                        <form action="{{ url_for('excluir_epi', epi_id=epi.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este EPI?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5Zm-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5ZM4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Zm6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528ZM8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5Z"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <div class="alert alert-info mt-3" role="alert">
+    {% if search_query %}
+        Nenhum EPI encontrado para a busca: "{{ search_query }}".
+    {% else %}
+        Nenhum EPI cadastrado.
+    {% endif %}
+    </div>
+{% endif %}
+
+<div class="modal fade" id="modalEPI" tabindex="-1" aria-labelledby="modalEPILabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="formEPI" method="POST"> {# Action será definida via JS #}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEPILabel">Dados do EPI</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="epi_id_hidden_field" name="epi_id_hidden_field">
+
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="nome_epi">Nome do EPI*</label>
+                    <input type="text" class="form-control" id="nome_epi" name="nome_epi" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="ca_epi">CA (Certificado Aprovação)</label>
+                    <input type="text" class="form-control" id="ca_epi" name="ca_epi">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="marca_epi">Marca</label>
+                <input type="text" class="form-control" id="marca_epi" name="marca_epi">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="periodicidade_valor_epi">Periodicidade de Troca (Valor)</label>
+                    <input type="number" class="form-control" id="periodicidade_valor_epi" name="periodicidade_valor" min="0">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="periodicidade_unidade_epi">Unidade da Periodicidade</label>
+                    <select class="form-control select2-basic" id="periodicidade_unidade_epi" name="periodicidade_unidade_epi" data-placeholder="Selecione a unidade...">
+                        <option value=""></option>
+                        {% for unidade in unidades_periodicidade %}
+                        <option value="{{ unidade }}">{{ unidade|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="meses_troca_epi_modal">Meses de Troca Programada (se aplicável)</label>
+                <select class="form-control select2-multiple" id="meses_troca_epi_modal" name="meses_troca_epi[]" multiple="multiple" data-placeholder="Selecione os meses...">
+                    {% for mes in meses_do_ano %}
+                    <option value="{{ mes.valor }}">{{ mes.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+             <div class="form-group">
+                <label for="observacoes_epi">Observações</label>
+                <textarea class="form-control" id="observacoes_epi" name="observacoes_epi" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar EPI</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+$(document).ready(function() {
+    var tabelaEPIs = $('#tabelaEPIs').DataTable({
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json" },
+        "pageLength": 10,
+        "responsive": true,
+        "columnDefs": [
+            { "orderable": false, "targets": -1 }, // Coluna Ações
+             // Removido type html-num-fmt para simplificar, pode ser adicionado se a ordenação padrão não for suficiente
+        ],
+        "order": [[0, 'asc']] // Ordenar por nome por defeito
+    });
+
+    function initEPIModalSelect2() {
+        $('#periodicidade_unidade_epi').select2({
+            theme: 'bootstrap',
+            placeholder: "Selecione a unidade...",
+            allowClear: true,
+            dropdownParent: $('#modalEPI .modal-content'),
+            language: "pt-BR"
+        });
+        $('#meses_troca_epi_modal').select2({
+            theme: 'bootstrap',
+            placeholder: "Selecione os meses...",
+            allowClear: true,
+            dropdownParent: $('#modalEPI .modal-content'),
+            language: "pt-BR",
+            closeOnSelect: false
+        });
+    }
+    
+    $('#modalEPI').on('shown.bs.modal', function () {
+        initEPIModalSelect2();
+    });
+
+    $('#btnNovoEPI').on('click', function() {
+        $('#modalEPILabel').text('Novo EPI');
+        $('#formEPI').attr('action', "{{ url_for('salvar_epi') }}");
+        $('#formEPI').trigger('reset'); 
+        $('#epi_id_hidden_field').val(''); 
+
+        $('#periodicidade_unidade_epi').val(null).trigger('change');
+        $('#meses_troca_epi_modal').val(null).trigger('change');
+    });
+
+    $('#tabelaEPIs tbody').on('click', '.btn-editar-epi', function() {
+        var epiId = $(this).data('id');
+        $('#modalEPILabel').text('Editar EPI');
+        $('#formEPI').attr('action', "{{ url_for('salvar_epi', epi_id=0) }}".replace('0', epiId));
+        $('#formEPI').trigger('reset');
+        $('#epi_id_hidden_field').val(epiId);
+
+        $('#periodicidade_unidade_epi').val(null).trigger('change.select2');
+        $('#meses_troca_epi_modal').val(null).trigger('change.select2');
+
+        $.getJSON("{{ url_for('get_epi_json', epi_id=0) }}".replace('0', epiId), function(data) {
+            if(data.error) {
+                showToast("Erro", data.error, false);
+                return;
+            }
+            $('#nome_epi').val(data.nome);
+            $('#marca_epi').val(data.marca);
+            $('#ca_epi').val(data.ca);
+            $('#periodicidade_valor_epi').val(data.periodicidade_valor);
+            $('#observacoes_epi').val(data.observacoes);
+
+            if(data.periodicidade_unidade) {
+                $('#periodicidade_unidade_epi').val(data.periodicidade_unidade).trigger('change.select2');
+            }
+            // 'meses_troca' em 'data' já é uma lista de strings (números dos meses)
+            if(data.meses_troca && Array.isArray(data.meses_troca) && data.meses_troca.length > 0) {
+                $('#meses_troca_epi_modal').val(data.meses_troca).trigger('change.select2');
+            } else {
+                 $('#meses_troca_epi_modal').val(null).trigger('change.select2');
+            }
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            showToast("Erro de Rede", "Não foi possível carregar os dados do EPI: " + textStatus, false);
+        });
+    });
+});
+</script>
+{% endblock %}
