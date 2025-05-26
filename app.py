@@ -53,7 +53,6 @@ def dashboard():
     total_funcoes = len(db.get_all_funcoes() or [])
     total_epis = len(db.get_all_epis() or [])
     total_fornecedores = len(db.get_all_fornecedores() or [])
-    # total_processos removido
     return render_template('dashboard.html',
                            total_funcionarios=total_funcionarios,
                            total_departamentos=total_departamentos,
@@ -243,6 +242,10 @@ def excluir_fornecedor(fornecedor_id):
 def relacionar_departamento_funcao_view():
     departamentos = db.get_all_departamentos()
     funcoes = db.get_all_funcoes() # Carrega todas as funções
+    
+    # Para depuração: verificar se as funções estão sendo carregadas
+    # print("Funções carregadas para o template:", funcoes) 
+    
     return render_template('relacionar_departamento_funcao.html',
                            departamentos=departamentos or [],
                            funcoes_todas=funcoes or []) # Passa para o template

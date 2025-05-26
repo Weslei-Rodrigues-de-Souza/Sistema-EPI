@@ -4,9 +4,19 @@
 
 {% block head_extra %}
 <style>
-    /* Estilo para o container do Select2 múltiplo, se precisar de ajustes específicos */
-    #funcoes_associadas_select_container .select2-container--bootstrap .select2-selection--multiple {
-        /* min-height: 150px; */ /* Exemplo de ajuste de altura, se necessário */
+    .funcoes-container { /* Mantido caso queira voltar para checkboxes no futuro */
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: .25rem;
+    }
+    .funcoes-container .form-check {
+        margin-bottom: 0.5rem;
+    }
+    /* Garante que o select2 ocupe a largura total */
+    #funcoes_associadas_select_container .select2-container {
+        width: 100% !important;
     }
 </style>
 {% endblock %}
@@ -42,6 +52,8 @@
                             {% for funcao in funcoes_todas %}
                             <option value="{{ funcao.id }}">{{ funcao.nome }}</option>
                             {% endfor %}
+                        {% else %}
+                            <option value="" disabled>Nenhuma função cadastrada</option>
                         {% endif %}
                     </select>
                 </div>
@@ -58,24 +70,23 @@
 {% block scripts_extra %}
 <script>
 $(document).ready(function() {
-    // A inicialização global do .select2-basic e .select2-multiple já está em base.html
-    // Se precisar de configurações específicas para #funcoes_associadas_select, pode fazer aqui:
-    $('#funcoes_associadas_select').select2({
+    // A inicialização global do .select2-basic já está em base.html
+    // Inicialização específica para o select múltiplo de funções:
+    var funcoesSelect = $('#funcoes_associadas_select');
+    
+    funcoesSelect.select2({
         theme: 'bootstrap',
         placeholder: "Selecione as funções...",
         allowClear: true,
         language: "pt-BR",
-        closeOnSelect: false, // Mantém o dropdown aberto para múltiplas seleções
-        dropdownParent: $('#modalEPI .modal-content') // Ajuste se este select estiver dentro de um modal, senão remova esta linha
-                                                    // Neste caso, não está em modal, então pode ser removido ou ajustado para o form.
-                                                    // Para este caso específico, como não está em modal, não precisa de dropdownParent.
+        closeOnSelect: false
+        // dropdownParent não é necessário aqui pois não está dentro de outro modal.
     });
-     $('#funcoes_associadas_select').parent().find('.select2-container').css('width', '100%');
+    // Garante que o select2 ocupe a largura total do seu container
+    // funcoesSelect.parent().find('.select2-container').css('width', '100%');
 
 
     function carregarFuncoesAssociadasDepto(departamentoId) {
-        var funcoesSelect = $('#funcoes_associadas_select');
-
         if (!departamentoId) {
             $('#containerFuncoesParaRelacionar').hide();
             $('#mensagemSemDepartamento').show();
@@ -90,13 +101,19 @@ $(document).ready(function() {
 
         funcoesSelect.val(null).trigger('change'); // Limpa seleções anteriores
 
+        console.log("A carregar funções para o departamento ID:", departamentoId);
+
         $.getJSON("{{ url_for('get_funcoes_associadas_a_departamento_json', departamento_id=0) }}".replace('0', departamentoId), function(data) {
+            console.log("Funções associadas recebidas:", data);
             if (data && Array.isArray(data) && data.length > 0) {
-                // 'data' é esperado ser uma lista de IDs de funções
-                var idsParaSelecionar = data.map(String); // Garante que os IDs sejam strings para o Select2
+                var idsParaSelecionar = data.map(String); 
+                console.log("IDs para selecionar:", idsParaSelecionar);
                 funcoesSelect.val(idsParaSelecionar).trigger('change');
+            } else {
+                console.log("Nenhuma função associada ou dados inválidos recebidos.");
             }
-        }).fail(function() {
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.error("Erro AJAX ao carregar funções:", textStatus, errorThrown, jqXHR.responseText);
             showToast("Erro", "Não foi possível carregar as funções associadas ao departamento.", false);
             $('#containerFuncoesParaRelacionar').hide();
             $('#mensagemSemDepartamento').show().text("Erro ao carregar funções. Tente novamente.");
@@ -110,6 +127,7 @@ $(document).ready(function() {
 
     var deptoInicial = $('#departamento_id_relacao').val();
     if (deptoInicial) {
+        console.log("Departamento inicial selecionado:", deptoInicial);
         carregarFuncoesAssociadasDepto(deptoInicial);
     } else {
         $('#containerFuncoesParaRelacionar').hide();
@@ -117,10 +135,9 @@ $(document).ready(function() {
     }
 
     $('#formRelacaoDeptoFuncao').on('submit', function(){
-        // Verifica se um departamento foi selecionado antes de submeter
         if (!$('#departamento_id_relacao').val()) {
             showToast("Atenção", "Por favor, selecione um departamento antes de salvar.", false);
-            return false; // Impede a submissão do formulário
+            return false; 
         }
         $('#btnSalvarRelacoesDepto').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...');
     });
