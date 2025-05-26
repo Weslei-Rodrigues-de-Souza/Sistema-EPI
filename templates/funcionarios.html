@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Funcionários{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Funcionários</h2>
+    <a href="{{ url_for('novo_funcionario') }}" class="btn btn-success">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+        </svg>
+        Novo Funcionário
+    </a>
+</div>
+
+<form method="GET" action="{{ url_for('listar_funcionarios') }}" class="mb-3 form-inline">
+    <div class="input-group flex-grow-1">
+        <input type="text" class="form-control" name="search" placeholder="Buscar por nome, CPF, departamento, função..." value="{{ search_query or '' }}">
+        <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+                Buscar
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('listar_funcionarios') }}" class="btn btn-outline-danger">Limpar</a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+{% if funcionarios %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover" id="tabelaFuncionarios"> <thead>
+            <tr>
+                <th class="text-left-override">Nome Completo</th> <th>CPF</th>
+                <th class="text-left-override">Departamento</th> <th class="text-left-override">Função</th> <th>Setor</th>
+                <th>Admissão</th>
+                <th>Treinamento</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for func in funcionarios %}
+            <tr>
+                <td class="text-left-override">{{ func.nome_completo }}</td>
+                <td>{{ func.cpf or 'N/A' }}</td>
+                <td class="text-left-override">{{ func.departamento_nome or 'N/A' }}</td>
+                <td class="text-left-override">{{ func.funcao_nome or 'N/A' }}</td>
+                <td>{{ func.setor or 'N/A' }}</td>
+                <td>{{ func.data_admissao | format_date_display if func.data_admissao else 'N/A' }}</td>
+                <td>{{ func.data_treinamento | format_date_display if func.data_treinamento else 'N/A' }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <a href="{{ url_for('editar_funcionario', func_id=func.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                            </svg>
+                        </a>
+                        <form action="{{ url_for('excluir_funcionario', func_id=func.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este funcionário?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5Zm-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5ZM4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Zm6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528ZM8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5Z"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <div class="alert alert-info mt-3" role="alert">
+    {% if search_query %}
+        Nenhum funcionário encontrado para a busca: "{{ search_query }}".
+    {% else %}
+        Nenhum funcionário cadastrado.
+    {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+$(document).ready(function() {
+    $('#tabelaFuncionarios').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json",
+            "lengthMenu": "Mostrar _MENU_ registros por página",
+            "zeroRecords": "Nenhum funcionário encontrado",
+            "info": "Mostrando página _PAGE_ de _PAGES_ (_TOTAL_ registros)",
+            "infoEmpty": "Nenhum registro disponível",
+            "infoFiltered": "(filtrado de _MAX_ registros totais)",
+            "search": "Pesquisa rápida na tabela:" // Alterado para ser mais específico
+        },
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+        "pageLength": 10,
+        "responsive": true,
+        "columnDefs": [
+            { "orderable": false, "targets": -1 } // Desabilita ordenação na coluna "Ações"
+        ]
+    });
+});
+</script>
+{% endblock %}

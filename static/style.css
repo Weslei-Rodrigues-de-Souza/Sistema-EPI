@@ -13,6 +13,7 @@ body {
 
 .navbar {
     /* A navbar já é fixed-top via classe Bootstrap em base.html */
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
 }
 
 .container {
@@ -28,6 +29,7 @@ body {
     text-align: center;
     margin-top: auto; /* Empurra para baixo se o conteúdo for menor que a tela */
     border-top: 1px solid #dee2e6;
+    color: #6c757d;
 }
 
 /* Estilos para o container de Toasts */
@@ -61,15 +63,15 @@ body {
     flex: 1 1 auto;
     width: 1% !important;
 }
-/* .input-group > .select2-container--bootstrap {
-    width: auto !important; -- This was duplicated, check if needed with specific context
-} */
+.input-group > .select2-container--bootstrap {
+    width: auto !important;
+}
 .input-group-append .btn { /* Alinha altura do botão com o select no input-group */
     height: calc(1.5em + .75rem + 2px);
 }
 
 
-/* Estilos para Accordion/Collapse (Exemplo, pode não ser usado diretamente) */
+/* Estilos para Accordion/Collapse na página de Configurações (Exemplo, pode não ser usado ainda) */
 .card-header .btn-link {
     font-weight: 500;
     color: #007bff;
@@ -93,17 +95,37 @@ body {
 /* Estilos para botões de ação em tabelas */
 .action-buttons .btn {
     margin-right: 5px;
+    margin-bottom: 5px; /* Adiciona margem inferior para evitar quebra em telas pequenas */
 }
 .action-buttons .btn:last-child {
     margin-right: 0;
 }
+.table td .action-buttons { /* Para garantir que os botões fiquem na mesma linha se possível */
+    white-space: nowrap;
+    display: flex; /* Ajuda a alinhar os botões */
+    align-items: center;
+    justify-content: center; /* Centraliza os botões na célula */
+}
+.table th:last-child, .table td:last-child { /* Coluna Ações */
+    min-width: 130px;
+    width: auto;
+    text-align: center !important;
+}
+
 
 /* Melhoria visual para tabelas */
 .table thead th {
     background-color: #343a40; /* bg-dark */
     color: white;
     vertical-align: middle;
+    text-align: center; /* Centraliza texto no cabeçalho por padrão */
 }
+/* Centraliza o texto em todas as células por padrão, exceto se especificado */
+.table tbody td {
+    vertical-align: middle;
+    text-align: center;
+}
+
 .table-hover tbody tr:hover {
     background-color: #f1f1f1; /* Cor suave ao passar o mouse */
 }
@@ -120,7 +142,7 @@ hr {
     border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-/* Ajustes para o Select2 dentro de um input-group (repetido, consolidar se necessário) */
+/* Ajustes para o Select2 dentro de um input-group */
 .input-group > .select2-container--bootstrap {
     width: auto !important;
     flex: 1 1 auto !important;
@@ -131,7 +153,20 @@ hr {
     border-bottom-left-radius: 0;
 }
 
-/* Adicionar estilos para dashboard cards se não existirem no seu arquivo original */
+/* Estilo para formulários */
+form {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: .3rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
+    margin-bottom: 20px;
+}
+
+form label {
+    font-weight: 500;
+}
+
+/* Estilos para cards de dashboard */
 .card-stats .card-body {
     display: flex;
     flex-direction: column;
@@ -148,31 +183,17 @@ hr {
     font-size: 1.1rem;
     color: #6c757d;
 }
-.card-deck .card { /* Bootstrap 4 uses card-deck, Bootstrap 5 might use row with g- property */
+.card-deck .card { /* Se usar card-deck */
     margin-bottom: 1.5rem;
 }
-
-/* Estilo para tabela de itens na página de nova venda */
-#itensVendaTable th, #itensVendaTable td {
-    vertical-align: middle;
-}
-#itensVendaTable .form-control-sm {
-    max-width: 80px; /* Para campos de quantidade */
+.card { /* Estilo geral de card */
+    border: none;
+    border-radius: .3rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
+    margin-bottom: 1.5rem; /* Adiciona margem entre cards */
 }
 
-/* Estilos para status de pagamento */
-.status-pago {
-    border: 1px solid green;
-    color: black;
-}
-
-.status-Pendente { background-color: #f6c23e; color: #5a5c69; border: 1px solid #f4b619;}
-.status-Pago { background-color: #1cc88a; color: #fff; border: 1px solid #169b6b;}
-.status-Vencido { background-color: #e74a3b; color: #fff; border: 1px solid #c82333;}
-.status-Cancelado { background-color: #858796; color: #fff; border: 1px solid #707280;}
-
-.status-recebido {
-    background-color: #1cc88a;
-    color: #fff;
-    border: 1px solid #169b6b;
+/* Alinhamento de texto específico para colunas que devem ser à esquerda */
+.text-left-override {
+    text-align: left !important;
 }

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<h2>{{ titulo }}</h2>
+<hr>
+
+<form method="POST">
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <label for="nome_completo">Nome Completo*</label>
+            <input type="text" class="form-control" id="nome_completo" name="nome_completo" value="{{ funcionario.nome_completo or '' }}" required>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="cpf">CPF</label>
+            <input type="text" class="form-control" id="cpf" name="cpf" value="{{ funcionario.cpf or '' }}">
+            </div>
+        <div class="form-group col-md-6">
+            <label for="rg">RG</label>
+            <input type="text" class="form-control" id="rg" name="rg" value="{{ funcionario.rg or '' }}">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group col-md-4">
+            <label for="ctps">CTPS</label>
+            <input type="text" class="form-control" id="ctps" name="ctps" value="{{ funcionario.ctps or '' }}">
+        </div>
+        <div class="form-group col-md-4">
+            <label for="serie">Série (CTPS)</label>
+            <input type="text" class="form-control" id="serie" name="serie" value="{{ funcionario.serie or '' }}">
+        </div>
+        <div class="form-group col-md-4">
+            <label for="pis">PIS</label>
+            <input type="text" class="form-control" id="pis" name="pis" value="{{ funcionario.pis or '' }}">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="departamento_id">Departamento</label>
+            <select class="form-control select2-basic" id="departamento_id" name="departamento_id" data-placeholder="Selecione um departamento...">
+                <option value=""></option> {% for dep in departamentos %}
+                <option value="{{ dep.id }}" {% if funcionario and funcionario.departamento_id|string == dep.id|string %}selected{% endif %}>
+                    {{ dep.nome }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group col-md-6">
+            <label for="funcao_id">Função</label>
+            <select class="form-control select2-basic" id="funcao_id" name="funcao_id" data-placeholder="Selecione uma função...">
+                <option value=""></option> {% for func in funcoes %}
+                <option value="{{ func.id }}" {% if funcionario and funcionario.funcao_id|string == func.id|string %}selected{% endif %}>
+                    {{ func.nome }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group col-md-4">
+            <label for="setor">Setor</label>
+            <select class="form-control select2-basic" id="setor" name="setor" data-placeholder="Selecione um setor...">
+                <option value=""></option> {% for s in setores %}
+                <option value="{{ s }}" {% if funcionario and funcionario.setor == s %}selected{% endif %}>
+                    {{ s }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group col-md-4">
+            <label for="data_admissao">Data de Admissão</label>
+            <input type="date" class="form-control" id="data_admissao" name="data_admissao" value="{{ funcionario.data_admissao if funcionario and (funcionario.data_admissao is not string or '-' in funcionario.data_admissao) else (funcionario.data_admissao | format_date_display | replace('/', '-')) if funcionario and funcionario.data_admissao else '' }}">
+        </div>
+        <div class="form-group col-md-4">
+            <label for="data_treinamento">Data de Treinamento</label>
+            <input type="date" class="form-control" id="data_treinamento" name="data_treinamento" value="{{ funcionario.data_treinamento if funcionario and (funcionario.data_treinamento is not string or '-' in funcionario.data_treinamento) else (funcionario.data_treinamento | format_date_display | replace('/', '-')) if funcionario and funcionario.data_treinamento else '' }}">
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success">Salvar</button>
+    <a href="{{ url_for('listar_funcionarios') }}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+// A inicialização do Select2 para a classe .select2-basic já está no base.html
+// Se precisar de configurações específicas para estes selects, adicione aqui.
+// Exemplo:
+// $(document).ready(function() {
+//     $('#departamento_id').select2({ theme: 'bootstrap', placeholder: 'Selecione...', language: "pt-BR", allowClear: true });
+//     $('#funcao_id').select2({ theme: 'bootstrap', placeholder: 'Selecione...', language: "pt-BR", allowClear: true });
+//     $('#setor').select2({ theme: 'bootstrap', placeholder: 'Selecione...', language: "pt-BR", allowClear: true });
+// });
+
+// Ajuste para garantir que o valor de input date esteja no formato YYYY-MM-DD
+// A lógica no template Jinja para o 'value' do input date já tenta fazer essa conversão.
+// Este script é um reforço ou pode ser usado para manipulação dinâmica se necessário.
+document.addEventListener('DOMContentLoaded', function() {
+    function ensureInputDateFormat(inputId) {
+        const dateInput = document.getElementById(inputId);
+        if (dateInput && dateInput.value) {
+            const parts = dateInput.value.split('/');
+            if (parts.length === 3) { // DD/MM/YYYY
+                // Reformat to YYYY-MM-DD
+                dateInput.value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            // Se já estiver YYYY-MM-DD, não faz nada.
+        }
+    }
+    // Chamada para os campos de data, se a formatação do Jinja não for suficiente.
+    // No entanto, a lógica do Jinja foi melhorada para tentar enviar YYYY-MM-DD diretamente.
+    // ensureInputDateFormat('data_admissao');
+    // ensureInputDateFormat('data_treinamento');
+});
+</script>
+{% endblock %}
