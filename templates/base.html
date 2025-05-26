@@ -11,28 +11,11 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .dataTables_wrapper .dataTables_paginate .paginate_button {
-            padding: 0.3em 0.8em;
-        }
-        .dataTables_wrapper .dataTables_length,
-        .dataTables_wrapper .dataTables_filter {
-            margin-bottom: 1em;
-        }
-        .select2-container--bootstrap .select2-selection--multiple {
-            min-height: calc(1.5em + .75rem + 2px);
-            padding: .2rem .75rem;
-            line-height: 1.5;
-            border-radius: .25rem;
-        }
-        .select2-container--bootstrap .select2-selection--multiple .select2-search__field {
-            width: 100% !important;
-        }
-        /* Estilo para o spinner de carregamento */
-        .spinner-border-sm {
-            width: 1rem;
-            height: 1rem;
-            border-width: .2em;
-        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 0.3em 0.8em; }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter { margin-bottom: 1em; }
+        .select2-container--bootstrap .select2-selection--multiple { min-height: calc(1.5em + .75rem + 2px); padding: .2rem .75rem; line-height: 1.5; border-radius: .25rem; }
+        .select2-container--bootstrap .select2-selection--multiple .select2-search__field { width: 100% !important; }
+        .spinner-border-sm { width: 1rem; height: 1rem; border-width: .2em; }
     </style>
     {% block head_extra %}{% endblock %}
 </head>
@@ -43,7 +26,7 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
+            <ul class="navbar-nav mr-auto">
                 <li class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
                     <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
                 </li>
@@ -56,21 +39,22 @@
                 <li class="nav-item {% if request.endpoint.startswith('listar_fornecedores') %}active{% endif %}">
                     <a class="nav-link" href="{{ url_for('listar_fornecedores') }}">Fornecedores</a>
                 </li>
-                <li class="nav-item dropdown {% if request.endpoint.startswith('listar_departamentos') or request.endpoint.startswith('listar_funcoes') %}active{% endif %}">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownCadastrosAux" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Cadastros Auxiliares
+                <li class="nav-item dropdown {% if request.endpoint.startswith('listar_departamentos') or request.endpoint.startswith('listar_funcoes') or request.endpoint.startswith('relacionar_departamento_funcao_view') %}active{% endif %}">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownConfig" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Configurações
                     </a>
-                    <div class="dropdown-menu" aria-labelledby="navbarDropdownCadastrosAux">
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdownConfig">
                         <a class="dropdown-item {% if request.endpoint.startswith('listar_departamentos') %}active{% endif %}" href="{{ url_for('listar_departamentos') }}">Departamentos</a>
                         <a class="dropdown-item {% if request.endpoint.startswith('listar_funcoes') %}active{% endif %}" href="{{ url_for('listar_funcoes') }}">Funções</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item {% if request.endpoint.startswith('relacionar_departamento_funcao_view') %}active{% endif %}" href="{{ url_for('relacionar_departamento_funcao_view') }}">Relacionar Depto/Função</a>
                     </div>
                 </li>
             </ul>
         </div>
     </nav>
 
-    <div aria-live="polite" aria-atomic="true" class="toast-container">
-    </div>
+    <div aria-live="polite" aria-atomic="true" class="toast-container"></div>
 
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -93,9 +77,7 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </div>
 
     <footer class="footer">
@@ -110,13 +92,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/i18n/pt-BR.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
-
     <script>
         function showToast(title, message, isSuccess) {
             var toastId = 'toast-' + Date.now();
             var toastHeaderClass = '';
             var toastIcon = '';
-
             if (isSuccess === true) {
                 toastHeaderClass = 'bg-success text-white';
                 toastIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill mr-2" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>';
@@ -129,45 +109,15 @@
                 toastHeaderClass = 'bg-info text-white';
                 toastIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle-fill mr-2" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>';
             }
-
-            var toastHtml = `
-                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="7000">
-                    <div class="toast-header ${toastHeaderClass}">
-                        ${toastIcon}
-                        <strong class="mr-auto">${title}</strong>
-                        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="toast-body" ${toastHeaderClass.includes('text-dark') ? 'style="color: #212529;"' : ''} >
-                        ${message}
-                    </div>
-                </div>
-            `;
+            var toastHtml = `<div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="7000"><div class="toast-header ${toastHeaderClass}">${toastIcon}<strong class="mr-auto">${title}</strong><button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="toast-body" ${toastHeaderClass.includes('text-dark') ? 'style="color: #212529;"' : ''} >${message}</div></div>`;
             $('.toast-container').append(toastHtml);
-            $('#' + toastId).toast('show');
-            $('#' + toastId).on('hidden.bs.toast', function () {
-                $(this).remove();
-            });
+            $('#' + toastId).toast('show').on('hidden.bs.toast', function () { $(this).remove(); });
         }
-
         $(document).ready(function() {
-            $('.select2-basic').select2({
-                theme: 'bootstrap',
-                placeholder: "Selecione uma opção",
-                allowClear: true,
-                language: "pt-BR"
-            });
-            $('.select2-multiple').select2({
-                theme: 'bootstrap',
-                placeholder: "Selecione uma ou mais opções",
-                allowClear: true,
-                language: "pt-BR",
-                closeOnSelect: false
-            });
+            $('.select2-basic').select2({ theme: 'bootstrap', placeholder: "Selecione uma opção", allowClear: true, language: "pt-BR" });
+            $('.select2-multiple').select2({ theme: 'bootstrap', placeholder: "Selecione uma ou mais opções", allowClear: true, language: "pt-BR", closeOnSelect: false });
         });
     </script>
-
     {% block scripts_extra %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Relacionar Departamento e Funções{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Estilo para o container do Select2 múltiplo, se precisar de ajustes específicos */
+    #funcoes_associadas_select_container .select2-container--bootstrap .select2-selection--multiple {
+        /* min-height: 150px; */ /* Exemplo de ajuste de altura, se necessário */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Relacionar Departamentos e Funções</h2>
+<p class="text-muted">Selecione um departamento para ver e editar as funções associadas a ele.</p>
+
+<form method="POST" action="{{ url_for('salvar_relacao_departamento_funcao') }}" id="formRelacaoDeptoFuncao">
+    <div class="row">
+        <div class="col-md-5">
+            <div class="form-group">
+                <label for="departamento_id_relacao">Selecione o Departamento:</label>
+                <select class="form-control select2-basic" id="departamento_id_relacao" name="departamento_id_relacao" data-placeholder="Escolha um departamento...">
+                    <option value=""></option>
+                    {% for depto in departamentos %}
+                    <option value="{{ depto.id }}" {% if request.args.get('departamento_id_focus')|int == depto.id %}selected{% endif %}>
+                        {{ depto.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div id="containerFuncoesParaRelacionar" style="display: none;">
+                <h5>Funções Associadas ao Departamento: <span id="nomeDepartamentoSelecionado" class="text-primary"></span></h5>
+                <p class="small text-muted">Selecione as funções que devem estar relacionadas a este departamento.</p>
+                
+                <div class="form-group" id="funcoes_associadas_select_container">
+                    <label for="funcoes_associadas_select">Funções:</label>
+                    <select class="form-control select2-multiple" id="funcoes_associadas_select" name="funcoes_associadas[]" multiple="multiple" data-placeholder="Selecione as funções...">
+                        {% if funcoes_todas %}
+                            {% for funcao in funcoes_todas %}
+                            <option value="{{ funcao.id }}">{{ funcao.nome }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnSalvarRelacoesDepto">Salvar Relações</button>
+            </div>
+            <div id="mensagemSemDepartamento" class="alert alert-info" role="alert">
+                Por favor, selecione um departamento para ver as funções.
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+$(document).ready(function() {
+    // A inicialização global do .select2-basic e .select2-multiple já está em base.html
+    // Se precisar de configurações específicas para #funcoes_associadas_select, pode fazer aqui:
+    $('#funcoes_associadas_select').select2({
+        theme: 'bootstrap',
+        placeholder: "Selecione as funções...",
+        allowClear: true,
+        language: "pt-BR",
+        closeOnSelect: false, // Mantém o dropdown aberto para múltiplas seleções
+        dropdownParent: $('#modalEPI .modal-content') // Ajuste se este select estiver dentro de um modal, senão remova esta linha
+                                                    // Neste caso, não está em modal, então pode ser removido ou ajustado para o form.
+                                                    // Para este caso específico, como não está em modal, não precisa de dropdownParent.
+    });
+     $('#funcoes_associadas_select').parent().find('.select2-container').css('width', '100%');
+
+
+    function carregarFuncoesAssociadasDepto(departamentoId) {
+        var funcoesSelect = $('#funcoes_associadas_select');
+
+        if (!departamentoId) {
+            $('#containerFuncoesParaRelacionar').hide();
+            $('#mensagemSemDepartamento').show();
+            funcoesSelect.val(null).trigger('change'); // Limpa seleção
+            return;
+        }
+
+        $('#mensagemSemDepartamento').hide();
+        $('#containerFuncoesParaRelacionar').show();
+        var nomeDepto = $('#departamento_id_relacao option:selected').text().trim();
+        $('#nomeDepartamentoSelecionado').text(nomeDepto);
+
+        funcoesSelect.val(null).trigger('change'); // Limpa seleções anteriores
+
+        $.getJSON("{{ url_for('get_funcoes_associadas_a_departamento_json', departamento_id=0) }}".replace('0', departamentoId), function(data) {
+            if (data && Array.isArray(data) && data.length > 0) {
+                // 'data' é esperado ser uma lista de IDs de funções
+                var idsParaSelecionar = data.map(String); // Garante que os IDs sejam strings para o Select2
+                funcoesSelect.val(idsParaSelecionar).trigger('change');
+            }
+        }).fail(function() {
+            showToast("Erro", "Não foi possível carregar as funções associadas ao departamento.", false);
+            $('#containerFuncoesParaRelacionar').hide();
+            $('#mensagemSemDepartamento').show().text("Erro ao carregar funções. Tente novamente.");
+        });
+    }
+
+    $('#departamento_id_relacao').on('change', function() {
+        var deptoIdSelecionado = $(this).val();
+        carregarFuncoesAssociadasDepto(deptoIdSelecionado);
+    });
+
+    var deptoInicial = $('#departamento_id_relacao').val();
+    if (deptoInicial) {
+        carregarFuncoesAssociadasDepto(deptoInicial);
+    } else {
+        $('#containerFuncoesParaRelacionar').hide();
+        $('#mensagemSemDepartamento').show();
+    }
+
+    $('#formRelacaoDeptoFuncao').on('submit', function(){
+        // Verifica se um departamento foi selecionado antes de submeter
+        if (!$('#departamento_id_relacao').val()) {
+            showToast("Atenção", "Por favor, selecione um departamento antes de salvar.", false);
+            return false; // Impede a submissão do formulário
+        }
+        $('#btnSalvarRelacoesDepto').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...');
+    });
+});
+</script>
+{% endblock %}
