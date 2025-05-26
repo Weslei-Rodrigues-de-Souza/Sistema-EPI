@@ -5,12 +5,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Funcionários</h2>
-    <a href="{{ url_for('novo_funcionario') }}" class="btn btn-success">
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalFuncionario" id="btnNovoFuncionario">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
         </svg>
         Novo Funcionário
-    </a>
+    </button>
 </div>
 
 <form method="GET" action="{{ url_for('listar_funcionarios') }}" class="mb-3 form-inline">
@@ -32,10 +32,14 @@
 
 {% if funcionarios %}
 <div class="table-responsive">
-    <table class="table table-striped table-hover" id="tabelaFuncionarios"> <thead>
+    <table class="table table-striped table-hover" id="tabelaFuncionarios">
+        <thead>
             <tr>
-                <th class="text-left-override">Nome Completo</th> <th>CPF</th>
-                <th class="text-left-override">Departamento</th> <th class="text-left-override">Função</th> <th>Setor</th>
+                <th class="text-left-override">Nome Completo</th>
+                <th>CPF</th>
+                <th class="text-left-override">Departamento</th>
+                <th class="text-left-override">Função</th>
+                <th>Setor</th>
                 <th>Admissão</th>
                 <th>Treinamento</th>
                 <th>Ações</th>
@@ -53,12 +57,13 @@
                 <td>{{ func.data_treinamento | format_date_display if func.data_treinamento else 'N/A' }}</td>
                 <td>
                     <div class="action-buttons">
-                        <a href="{{ url_for('editar_funcionario', func_id=func.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-funcionario" title="Editar"
+                                data-toggle="modal" data-target="#modalFuncionario" data-id="{{ func.id }}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                 <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                 <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                             </svg>
-                        </a>
+                        </button>
                         <form action="{{ url_for('excluir_funcionario', func_id=func.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este funcionário?');">
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
@@ -82,28 +87,208 @@
     {% endif %}
     </div>
 {% endif %}
+
+<div class="modal fade" id="modalFuncionario" tabindex="-1" aria-labelledby="modalFuncionarioLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"> {# modal-lg para mais espaço #}
+    <div class="modal-content">
+      <form id="formFuncionario" method="POST"> {# Action será definida via JS #}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalFuncionarioLabel">Funcionário</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          {# Conteúdo do formulário de funcionario.html (o que estava no Canvas) virá aqui #}
+          {# Removido {% extends "base.html" %}, {% block title %}, {% block content %} etc. #}
+            <input type="hidden" id="funcionario_id_hidden_field" name="funcionario_id_hidden_field">
+
+            <div class="form-row">
+                <div class="form-group col-md-12">
+                    <label for="nome_completo">Nome Completo*</label>
+                    <input type="text" class="form-control" id="nome_completo" name="nome_completo" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="cpf">CPF</label>
+                    <input type="text" class="form-control" id="cpf" name="cpf">
+                    </div>
+                <div class="form-group col-md-6">
+                    <label for="rg">RG</label>
+                    <input type="text" class="form-control" id="rg" name="rg">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="ctps">CTPS</label>
+                    <input type="text" class="form-control" id="ctps" name="ctps">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="serie">Série (CTPS)</label>
+                    <input type="text" class="form-control" id="serie" name="serie">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="pis">PIS</label>
+                    <input type="text" class="form-control" id="pis" name="pis">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="departamento_id_modal">Departamento</label> {# ID alterado para evitar conflito com select fora do modal se houver #}
+                    <select class="form-control select2-basic" id="departamento_id_modal" name="departamento_id" data-placeholder="Selecione um departamento...">
+                        <option value=""></option>
+                        {% for dep in departamentos %}
+                        <option value="{{ dep.id }}">{{ dep.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="funcao_id_modal">Função</label> {# ID alterado #}
+                    <select class="form-control select2-basic" id="funcao_id_modal" name="funcao_id" data-placeholder="Selecione uma função...">
+                        <option value=""></option>
+                        {% for func in funcoes %}
+                        <option value="{{ func.id }}">{{ func.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="setor_modal">Setor</label> {# ID alterado #}
+                    <select class="form-control select2-basic" id="setor_modal" name="setor" data-placeholder="Selecione um setor...">
+                        <option value=""></option>
+                        {% for s in setores %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="data_admissao">Data de Admissão</label>
+                    <input type="date" class="form-control" id="data_admissao" name="data_admissao">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="data_treinamento">Data de Treinamento</label>
+                    <input type="date" class="form-control" id="data_treinamento" name="data_treinamento">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts_extra %}
 <script>
 $(document).ready(function() {
-    $('#tabelaFuncionarios').DataTable({
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json",
-            "lengthMenu": "Mostrar _MENU_ registros por página",
-            "zeroRecords": "Nenhum funcionário encontrado",
-            "info": "Mostrando página _PAGE_ de _PAGES_ (_TOTAL_ registros)",
-            "infoEmpty": "Nenhum registro disponível",
-            "infoFiltered": "(filtrado de _MAX_ registros totais)",
-            "search": "Pesquisa rápida na tabela:" // Alterado para ser mais específico
-        },
-        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+    var tabelaFuncionarios = $('#tabelaFuncionarios').DataTable({
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json" },
         "pageLength": 10,
         "responsive": true,
-        "columnDefs": [
-            { "orderable": false, "targets": -1 } // Desabilita ordenação na coluna "Ações"
-        ]
+        "columnDefs": [ { "orderable": false, "targets": -1 } ]
     });
+
+    // Configuração do Select2 para os campos dentro do modal de funcionário
+    // É importante que o dropdownParent seja o modal para o Select2 funcionar corretamente sobre ele.
+    function initFuncionarioModalSelect2() {
+        $('#departamento_id_modal').select2({
+            theme: 'bootstrap',
+            placeholder: "Selecione um departamento...",
+            allowClear: true,
+            dropdownParent: $('#modalFuncionario .modal-content'),
+            language: "pt-BR"
+        });
+        $('#funcao_id_modal').select2({
+            theme: 'bootstrap',
+            placeholder: "Selecione uma função...",
+            allowClear: true,
+            dropdownParent: $('#modalFuncionario .modal-content'),
+            language: "pt-BR"
+        });
+        $('#setor_modal').select2({
+            theme: 'bootstrap',
+            placeholder: "Selecione um setor...",
+            allowClear: true,
+            dropdownParent: $('#modalFuncionario .modal-content'),
+            language: "pt-BR"
+        });
+    }
+    
+    // Chamar a inicialização do Select2 quando o modal for mostrado
+    $('#modalFuncionario').on('shown.bs.modal', function () {
+        initFuncionarioModalSelect2();
+    });
+
+
+    $('#btnNovoFuncionario').on('click', function() {
+        $('#modalFuncionarioLabel').text('Novo Funcionário');
+        $('#formFuncionario').attr('action', "{{ url_for('salvar_funcionario') }}");
+        $('#formFuncionario').trigger('reset'); // Limpa todos os campos do formulário
+        $('#funcionario_id_hidden_field').val(''); // Garante que o ID oculto está limpo
+
+        // Resetar Select2 para placeholder
+        $('#departamento_id_modal').val(null).trigger('change');
+        $('#funcao_id_modal').val(null).trigger('change');
+        $('#setor_modal').val(null).trigger('change');
+    });
+
+    $('#tabelaFuncionarios tbody').on('click', '.btn-editar-funcionario', function() {
+        var funcId = $(this).data('id');
+        $('#modalFuncionarioLabel').text('Editar Funcionário');
+        $('#formFuncionario').attr('action', "{{ url_for('salvar_funcionario', func_id=0) }}".replace('0', funcId));
+        $('#formFuncionario').trigger('reset');
+        $('#funcionario_id_hidden_field').val(funcId);
+
+        // Resetar Select2 para placeholder antes de popular
+        $('#departamento_id_modal').val(null).trigger('change');
+        $('#funcao_id_modal').val(null).trigger('change');
+        $('#setor_modal').val(null).trigger('change');
+
+        $.getJSON("{{ url_for('get_funcionario_json', func_id=0) }}".replace('0', funcId), function(data) {
+            if(data.error) {
+                showToast("Erro", data.error, false);
+                return;
+            }
+            $('#nome_completo').val(data.nome_completo);
+            $('#cpf').val(data.cpf);
+            $('#rg').val(data.rg);
+            $('#ctps').val(data.ctps);
+            $('#serie').val(data.serie);
+            $('#pis').val(data.pis);
+            $('#data_admissao').val(data.data_admissao); // Formato YYYY-MM-DD
+            $('#data_treinamento').val(data.data_treinamento); // Formato YYYY-MM-DD
+
+            // Popular e selecionar Select2
+            if(data.departamento_id) {
+                $('#departamento_id_modal').val(data.departamento_id.toString()).trigger('change');
+            }
+            if(data.funcao_id) {
+                $('#funcao_id_modal').val(data.funcao_id.toString()).trigger('change');
+            }
+            if(data.setor) {
+                $('#setor_modal').val(data.setor).trigger('change');
+            }
+        }).fail(function() {
+            showToast("Erro", "Não foi possível carregar os dados do funcionário.", false);
+        });
+    });
+
+    // Para garantir que o Select2 seja reinicializado se o DataTables redesenhar a tabela
+    // (pode ser necessário se a tabela for muito dinâmica, mas geralmente não para este caso de uso)
+    // tabelaFuncionarios.on('draw.dt', function () {
+    //     // Aqui você poderia reinicializar handlers de eventos para botões se necessário
+    // });
+
 });
 </script>
 {% endblock %}

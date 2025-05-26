@@ -5,20 +5,22 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Funções</h2>
-    <a href="{{ url_for('nova_funcao') }}" class="btn btn-success">
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalFuncao" id="btnNovaFuncao">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
         </svg>
         Nova Função
-    </a>
+    </button>
 </div>
 
 {% if funcoes %}
 <div class="table-responsive">
-    <table class="table table-striped table-hover" id="tabelaFuncoes"> <thead>
+    <table class="table table-striped table-hover" id="tabelaFuncoes">
+        <thead>
             <tr>
                 <th>ID</th>
-                <th class="text-left-override">Nome</th> <th>Ações</th>
+                <th class="text-left-override">Nome</th>
+                <th>Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -28,12 +30,13 @@
                 <td class="text-left-override">{{ func.nome }}</td>
                 <td>
                     <div class="action-buttons">
-                        <a href="{{ url_for('editar_funcao', func_id=func.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-funcao" title="Editar"
+                                data-toggle="modal" data-target="#modalFuncao" data-id="{{ func.id }}" data-nome="{{ func.nome }}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                 <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                 <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                             </svg>
-                        </a>
+                        </button>
                         <form action="{{ url_for('excluir_funcao', func_id=func.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta função? Funcionários associados terão a função removida.');">
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
@@ -53,6 +56,32 @@
     Nenhuma função cadastrada.
 </div>
 {% endif %}
+
+<div class="modal fade" id="modalFuncao" tabindex="-1" aria-labelledby="modalFuncaoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formFuncao" method="POST"> {# Action será definida via JS #}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalFuncaoLabel">Função</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="funcao_id_hidden_field" name="funcao_id_hidden_field"> {# Para edição #}
+          <div class="form-group">
+            <label for="nome_funcao">Nome da Função*</label>
+            <input type="text" class="form-control" id="nome_funcao" name="nome_funcao" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -63,6 +92,23 @@ $(document).ready(function() {
         "pageLength": 10,
         "responsive": true,
         "columnDefs": [ { "orderable": false, "targets": -1 } ]
+    });
+
+    $('#btnNovaFuncao').on('click', function() {
+        $('#modalFuncaoLabel').text('Nova Função');
+        $('#formFuncao').attr('action', "{{ url_for('salvar_funcao') }}");
+        $('#funcao_id_hidden_field').val('');
+        $('#nome_funcao').val('');
+    });
+
+    $('.btn-editar-funcao').on('click', function() {
+        var funcId = $(this).data('id');
+        var funcNome = $(this).data('nome');
+
+        $('#modalFuncaoLabel').text('Editar Função');
+        $('#formFuncao').attr('action', "{{ url_for('salvar_funcao', func_id=0) }}".replace('0', funcId));
+        $('#funcao_id_hidden_field').val(funcId);
+        $('#nome_funcao').val(funcNome);
     });
 });
 </script>

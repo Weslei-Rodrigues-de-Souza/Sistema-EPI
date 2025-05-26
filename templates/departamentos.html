@@ -5,20 +5,22 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Departamentos</h2>
-    <a href="{{ url_for('novo_departamento') }}" class="btn btn-success">
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modalDepartamento" id="btnNovoDepartamento">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
         </svg>
         Novo Departamento
-    </a>
+    </button>
 </div>
 
 {% if departamentos %}
 <div class="table-responsive">
-    <table class="table table-striped table-hover" id="tabelaDepartamentos"> <thead>
+    <table class="table table-striped table-hover" id="tabelaDepartamentos">
+        <thead>
             <tr>
                 <th>ID</th>
-                <th class="text-left-override">Nome</th> <th>Ações</th>
+                <th class="text-left-override">Nome</th>
+                <th>Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -28,12 +30,13 @@
                 <td class="text-left-override">{{ dep.nome }}</td>
                 <td>
                     <div class="action-buttons">
-                        <a href="{{ url_for('editar_departamento', dep_id=dep.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-departamento" title="Editar"
+                                data-toggle="modal" data-target="#modalDepartamento" data-id="{{ dep.id }}" data-nome="{{ dep.nome }}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                 <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                 <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                             </svg>
-                        </a>
+                        </button>
                         <form action="{{ url_for('excluir_departamento', dep_id=dep.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este departamento? Funcionários associados terão o departamento removido.');">
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
@@ -53,6 +56,32 @@
     Nenhum departamento cadastrado.
 </div>
 {% endif %}
+
+<div class="modal fade" id="modalDepartamento" tabindex="-1" aria-labelledby="modalDepartamentoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formDepartamento" method="POST"> {# Action será definida via JS #}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalDepartamentoLabel">Departamento</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="departamento_id" name="departamento_id_hidden_field"> {# Para edição #}
+          <div class="form-group">
+            <label for="nome_departamento">Nome do Departamento*</label>
+            <input type="text" class="form-control" id="nome_departamento" name="nome_departamento" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -63,6 +92,28 @@ $(document).ready(function() {
         "pageLength": 10,
         "responsive": true,
         "columnDefs": [ { "orderable": false, "targets": -1 } ]
+    });
+
+    $('#btnNovoDepartamento').on('click', function() {
+        $('#modalDepartamentoLabel').text('Novo Departamento');
+        $('#formDepartamento').attr('action', "{{ url_for('salvar_departamento') }}");
+        $('#departamento_id').val(''); // Limpa ID para novo
+        $('#nome_departamento').val('');
+    });
+
+    $('.btn-editar-departamento').on('click', function() {
+        var depId = $(this).data('id');
+        var depNome = $(this).data('nome'); // Pega o nome do data attribute para evitar AJAX se não for necessário
+
+        $('#modalDepartamentoLabel').text('Editar Departamento');
+        $('#formDepartamento').attr('action', "{{ url_for('salvar_departamento', dep_id=0) }}".replace('0', depId));
+        $('#departamento_id').val(depId);
+        $('#nome_departamento').val(depNome);
+
+        // Opcional: Se precisar de mais dados do que o nome, faria um AJAX aqui:
+        // $.getJSON("{{ url_for('get_departamento_json', dep_id=0) }}".replace('0', depId), function(data) {
+        //     $('#nome_departamento').val(data.nome);
+        // });
     });
 });
 </script>
